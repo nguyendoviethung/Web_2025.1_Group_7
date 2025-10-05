@@ -1,0 +1,26 @@
+    .signin-container {
+  background-image: url("../assets/LoginBackground.png");
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+
+  .logo {
+    position: absolute;
+    top: 3.5rem;
+    left: 3.5rem;
+    z-index: 10;
+
+    img {
+      height: 6rem;
+      width: auto;
+      object-fit: contain;
+    }
+  }
+}
