@@ -1,8 +1,8 @@
 
-import {Form} from "./Form";
+import {InputField} from "./InputField";
 import "../style/LoginForm.scss";
 
-export default function LoginForm({title, childrenSignInInput,childrenSignInForgot,childrenSignInNotAccount,action}) {
+export default function LoginForm({title, children_1,children_2,children_3,action, onClick}) {
     return (
         <div className="login-form">
             <h2 className="welcome-library">
@@ -13,9 +13,9 @@ export default function LoginForm({title, childrenSignInInput,childrenSignInForg
             </h2>
             <div className="login-title"> {title} </div>
 
-             {childrenSignInInput} 
+             {children_1} 
             
-            <Form 
+            <InputField
                 name="password"
                 label="Enter your password"
                 type="password"
@@ -23,10 +23,12 @@ export default function LoginForm({title, childrenSignInInput,childrenSignInForg
                 value=""
                 onChange={() => {}}
             />
-              {childrenSignInForgot}
-                <div className = "d-flex justify-content-end w-100 mt-5">
-                    {childrenSignInNotAccount}
-                <button className="login-button">
+
+              {children_2}
+
+            <div className = "d-flex justify-content-end w-100 mt-5">    
+              {children_3}
+                <button className="login-button" onClick = {onClick}>
                     {action}
                 </button>
             </div>

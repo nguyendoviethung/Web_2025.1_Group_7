@@ -1,6 +1,6 @@
-import '../style/Form.scss';
+import '../style/InputField.scss';
 
-export function Form({ name, label, type, placeholder, value, onChange }) {
+export function InputField({ name, label, type, placeholder, value, onChange }) {
   return (
     <div className="form-group">
       <label htmlFor={name} className="form-label">

@@ -1,0 +1,19 @@
+.link-text {
+  width : 15rem;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 1.4rem;
+  color: #686666;
+  margin-left: 2rem;
+  margin-right : 10rem;
+  .register {
+    color: #DB5454;
+    text-decoration: none;
+    transition: color 0.3s ease;
+
+    &:hover {
+      text-decoration: underline;
+      color: #e63b3b;
+    }
+  }
+}

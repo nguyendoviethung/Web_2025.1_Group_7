@@ -5,16 +5,21 @@ import Apple from "../assets/Apple.png";
 import Facebook from "../assets/Facebook.png";
 import LoginForm from "../components/LoginForm";
 import LoginBackground from "../components/LoginBackground";
-import { Form } from "../components/Form";  
+import { InputField } from "../components/InputField";  
+import { useNavigate } from "react-router-dom";
 
 export default function SignIn() {
+const navigate = useNavigate();
+const handleSignIn = () => {
+  navigate("/admin/dashboard");
+}
   return (
     <LoginBackground>
       <LoginForm 
         title="Sign in"
         action="Sign In"
-
-        childrenSignInInput = {
+        onClick = {handleSignIn}
+        children_1 = {
           <>
             <div className="d-flex justify-content-start align-items-center gap-3 mb-5"> 
               <Link to="/" className="google-signin">
@@ -30,7 +35,7 @@ export default function SignIn() {
                 <img src={Apple} alt="Apple logo" className="social-logo"/>
               </button>
             </div>
-            <Form 
+            <InputField
               name="username"
               label="Enter your username"
               type="email"
@@ -41,14 +46,14 @@ export default function SignIn() {
           </>
         }
 
-      childrenSignInForgot = {
+      children_2 = {
           <div className="forgot-password">
             <Link to = "/" className = "link-forgot-password">Forgot your password?</Link>
           </div>
         }
 
-      childrenSignInNotAccount = {
-          <div className="link-text d-flex flex-column align-items-start justify-content-center">
+      children_3 = {
+          <div className="link-text d-flex flex-column align-items-start">
               No Account? 
             <Link to="/register" className = "register">
               <div className = "register">
