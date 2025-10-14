@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
 import "../style/LoginBackground.scss";
-import logo from "../assets/LibraryLogo.png";
+import logo from "../assets/LibraryLogo.svg";
 
 export default function LoginBackground({ children }) {
   return (

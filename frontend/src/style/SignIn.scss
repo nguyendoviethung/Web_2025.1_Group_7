@@ -2,39 +2,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 29.8rem;
-  height: 5.6rem;
+  width: 24rem;
+  max-width: 29.8rem;
+  height: 4.8rem;
   background: #E9F1FF;
-  border: 1px solid #E0E0E0;
-  border-radius: 0.9rem;
+  border: 0.1rem solid #E0E0E0;
+  border-radius: 0.8rem;
   font-family: 'Poppins', sans-serif;
   font-weight: 400;
-  font-size: 1.6rem;
-  line-height: 2.4rem;
+  font-size: 1.4rem;
+  line-height: 1.5;
   color: #1e68df;
   cursor: pointer;
   transition: all 0.3s ease;
   text-decoration: none;
 
   .social-logo {
-    height: 2.6rem;
+    height: 2.2rem;
     width: auto;
     object-fit: contain;
-    margin-right: 1.2rem;
+    margin-right: 1rem;
   }
 
   &:hover {
     background: #d9e7ff;
-    box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0.3rem 0.8rem rgba(0, 0, 0, 0.1);
+    transform: translateY(-0.1rem);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
 .logo-wrapper {
-  width: 6rem;   
-  height:6rem; 
-  border-radius: 0.9rem;
-  background-color: rgb(255, 255, 255);
-  border: 1px solid #e8e6e6;
+  width: 5rem;   
+  height: 5rem; 
+  border-radius: 0.8rem;
+  background-color: #ffffff;
+  border: 0.1rem solid #e8e6e6;
   display: flex;
   align-items: center;
   justify-content: center;  
@@ -42,31 +48,36 @@
   transition: all 0.3s ease;
 
   &:hover {
+    box-shadow: 0 0.3rem 0.8rem rgba(0, 0, 0, 0.1);
+    transform: translateY(-0.1rem);
+  }
 
-    box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.1);
+  &:active {
+    transform: translateY(0);
   }
 
   .social-logo {
-    height: 2.9rem;
+    height: 2.4rem;
     width: auto;
     display: block;
   }
-
 } 
 
 .forgot-password {
   width: 100%;
-  display : flex;
+  display: flex;
   text-align: right;
   justify-content: flex-end;
+  margin-bottom: 1.5rem;
+
   .link-forgot-password {
-    display:block;
+    display: block;
     font-family: 'Poppins', sans-serif;
     font-weight: 400;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: #2978f8;
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: color 0.3s ease, text-decoration 0.3s ease;
 
     &:hover {
       text-decoration: underline;
@@ -78,14 +89,15 @@
 .link-text {
   font-family: 'Poppins', sans-serif;
   font-weight: 400;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   color: #686666;
-  margin-left: 2rem;
-  margin-right : 10rem;
+  text-align: center;
+
   .register {
     color: #DB5454;
     text-decoration: none;
-    transition: color 0.3s ease;
+    font-weight: 500;
+    transition: color 0.3s ease, text-decoration 0.3s ease;
 
     &:hover {
       text-decoration: underline;

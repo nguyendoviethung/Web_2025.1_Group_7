@@ -1,15 +1,17 @@
 .link-text {
-  width : 15rem;
+  width: 15rem;
   font-family: 'Poppins', sans-serif;
   font-weight: 400;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
+  line-height: 1.5;
   color: #686666;
-  margin-left: 2rem;
-  margin-right : 10rem;
+  margin-left: 1.5rem;
+  margin-right: 1.5rem;
+  
   .register {
     color: #DB5454;
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: color 0.3s ease, text-decoration 0.3s ease;
 
     &:hover {
       text-decoration: underline;

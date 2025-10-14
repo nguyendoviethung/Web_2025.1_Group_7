@@ -1,4 +1,4 @@
-    .signin-container {
+.signin-container {
   background-image: url("../assets/LoginBackground.png");
   background-size: cover;
   background-position: center bottom;
@@ -13,12 +13,12 @@
 
   .logo {
     position: absolute;
-    top: 3.5rem;
-    left: 3.5rem;
+    top: 2.5rem;
+    left: 2.5rem;
     z-index: 10;
 
     img {
-      height: 6rem;
+      height: 4.5rem;
       width: auto;
       object-fit: contain;
     }

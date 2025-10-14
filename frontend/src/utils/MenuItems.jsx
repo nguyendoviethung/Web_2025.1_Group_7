@@ -1,41 +1,44 @@
-import Books from '../assets/Books.png'
-import Dashboard from '../assets/Dashboard.png'
-import Messages from '../assets/Messages.png'
-import QR from '../assets/QR.png'
-import Reader from '../assets/Reader.png'
-import Setting from '../assets/Setting.png'
+import {
+  faGaugeHigh,
+  faBook,
+  faUser,
+  faCommentDots,
+  faQrcode,
+  faGear,
+} from "@fortawesome/free-solid-svg-icons";
+
 
 // Admin menu items
 export const menuItemsAdmin = [
     {
         title: "Dashboard",
-        icon : Dashboard,
-        link: "/dashboard"
+        icon : faGaugeHigh,
+        link: "dashboard"
     },
     {
         title: "Books",
-        icon : Books,
-        link: "/book"
+        icon : faBook,
+        link: "books"
     },
     {
         title: "Readers",
-        icon : Reader,
-        link: "/reader"
+        icon : faUser,
+        link: "readers"
     },
-        {
-        title: "QR Code",
-        icon : QR,  
-        link: "/qrcode"
+    {
+        title: "Borrow Books",
+        icon : faQrcode,  
+        link: "borrow-books"
     },
     {
         title: "Messages",
-        icon : Messages,
-        link: "/messages"
+        icon : faCommentDots,
+        link: "messages"
     },
     {
-        title: "Settings",
-        icon : Setting,
-        link: "/settings"
+        title: "Setting",
+        icon : faGear,
+        link: "settings"
     },
 ];
 

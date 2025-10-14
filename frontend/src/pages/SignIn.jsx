@@ -53,8 +53,8 @@ const handleSignIn = () => {
         }
 
       children_3 = {
-          <div className="link-text d-flex flex-column align-items-start">
-              No Account? 
+          <div className="link-text d-flex flex-column align-items-start mr-5">
+              No Account ? 
             <Link to="/register" className = "register">
               <div className = "register">
                  Sign up

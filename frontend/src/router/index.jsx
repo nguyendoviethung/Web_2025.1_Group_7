@@ -24,8 +24,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "dashboard", element: <Dashboard /> },
-      { path: "book", element: <BookManagement /> },
-      { path: "reader", element: <ReaderManagement /> },
+      { path: "books", element: <BookManagement /> },
+      { path: "readers", element: <ReaderManagement /> },
       // có thể thêm các trang khác 
     ],
   },
