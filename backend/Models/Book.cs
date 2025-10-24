@@ -37,11 +37,11 @@ namespace backend.Models
         [ForeignKey("PublisherId")]
         public virtual Publisher Publisher { get; set; }
 
-        public virtual ICollection<BookAuthor> BookAuthors { get; set; }
-        public virtual ICollection<BookCategory> BookCategories { get; set; }
-        public virtual ICollection<BookCopy> BookCopies { get; set; }
-        public virtual ICollection<Reservation> Reservations { get; set; }
-        public virtual ICollection<Review> Reviews { get; set; }
+        public virtual ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+        public virtual ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
+        public virtual ICollection<BookCopy> BookCopies { get; set; } = new List<BookCopy>();
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+        public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
     }
 
     public class BookCopy
