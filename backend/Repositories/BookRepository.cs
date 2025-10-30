@@ -1,4 +1,6 @@
 using backend.Data;
+using backend.DTOs.Book;
+using backend.DTOs.Shared;
 using backend.Interfaces;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -14,13 +16,38 @@ namespace backend.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Book>> GetAllAsync()
+        public async Task<PagedResult<Book>> GetAllAsync(BookQueryParameters queryParameters)
         {
-            return await _context.Books
+            var query = _context.Books
                 .Include(b => b.Publisher)
                 .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
                 .Include(b => b.BookCategories).ThenInclude(bc => bc.Category)
+                .AsQueryable();
+
+            // Apply filters
+            if (!string.IsNullOrEmpty(queryParameters.Title))
+            {
+                query = query.Where(b => b.Title.Contains(queryParameters.Title));
+            }
+
+            if (queryParameters.AuthorId.HasValue)
+            {
+                query = query.Where(b => b.BookAuthors.Any(ba => ba.AuthorId == queryParameters.AuthorId.Value));
+            }
+
+            if (queryParameters.CategoryId.HasValue)
+            {
+                query = query.Where(b => b.BookCategories.Any(bc => bc.CategoryId == queryParameters.CategoryId.Value));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((queryParameters.PageNumber - 1) * queryParameters.PageSize)
+                .Take(queryParameters.PageSize)
                 .ToListAsync();
+
+            return new PagedResult<Book>(items, totalCount, queryParameters.PageNumber, queryParameters.PageSize);
         }
 
         public async Task<Book?> GetByIdAsync(int id)

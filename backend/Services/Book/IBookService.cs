@@ -1,10 +1,11 @@
 using backend.DTOs.Book;
+using backend.DTOs.Shared;
 
 namespace backend.Services.Book
 {
     public interface IBookService
     {
-        Task<IEnumerable<BookDto>> GetAllBooksAsync();
+        Task<PagedResult<BookDto>> GetAllBooksAsync(BookQueryParameters queryParameters);
         Task<BookDto?> GetBookByIdAsync(int id);
         Task<BookDto> CreateBookAsync(CreateBookDto createBookDto);
         Task<bool> UpdateBookAsync(int id, UpdateBookDto updateBookDto);

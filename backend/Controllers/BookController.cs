@@ -1,4 +1,5 @@
 using backend.DTOs.Book;
+using backend.DTOs.Shared;
 using backend.Services.Book;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,9 +18,9 @@ namespace backend.Controllers
 
         // GET: api/Book
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<BookDto>>> GetBooks()
+        public async Task<ActionResult<PagedResult<BookDto>>> GetBooks([FromQuery] BookQueryParameters queryParameters)
         {
-            var books = await _bookService.GetAllBooksAsync();
+            var books = await _bookService.GetAllBooksAsync(queryParameters);
             return Ok(books);
         }
 

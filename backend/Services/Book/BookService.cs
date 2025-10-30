@@ -1,5 +1,6 @@
 using AutoMapper;
 using backend.DTOs.Book;
+using backend.DTOs.Shared;
 using backend.Interfaces;
 
 namespace backend.Services.Book
@@ -15,10 +16,11 @@ namespace backend.Services.Book
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<BookDto>> GetAllBooksAsync()
+        public async Task<PagedResult<BookDto>> GetAllBooksAsync(BookQueryParameters queryParameters)
         {
-            var books = await _bookRepository.GetAllAsync();
-            return _mapper.Map<IEnumerable<BookDto>>(books);
+            var pagedBooks = await _bookRepository.GetAllAsync(queryParameters);
+            var bookDtos = _mapper.Map<List<BookDto>>(pagedBooks.Items);
+            return new PagedResult<BookDto>(bookDtos, pagedBooks.TotalCount, pagedBooks.PageNumber, pagedBooks.PageSize);
         }
 
         public async Task<BookDto?> GetBookByIdAsync(int id)
