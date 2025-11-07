@@ -38,7 +38,7 @@ namespace backend.Controllers
 
         // POST: api/Book
         [HttpPost]
-        public async Task<ActionResult<BookDto>> PostBook(CreateBookDto createBookDto)
+        public async Task<ActionResult<BookDto>> PostBook([FromForm] CreateBookDto createBookDto)
         {
             var newBookDto = await _bookService.CreateBookAsync(createBookDto);
             return CreatedAtAction(nameof(GetBook), new { id = newBookDto.BookId }, newBookDto);

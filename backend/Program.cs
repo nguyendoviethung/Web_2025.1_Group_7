@@ -7,6 +7,7 @@ using backend.Services.Author;
 using backend.Services.Book;
 using backend.Services.Category;
 using backend.Services.Publisher;
+using backend.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,12 +47,24 @@ builder.Services.AddSwaggerGen();
 // 🔹 AutoMapper
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
-
+// 🔹 Minio Storage Service
+builder.Services.Configure<MinioSettings>(builder.Configuration.GetSection("Minio"));
+builder.Services.AddSingleton<IMinioService, MinioService>();
 // ====================================
 // BUILD APP
 // ====================================
 
 var app = builder.Build();
+// ====================================
+// AUTO MIGRATION
+// ====================================
+
+//  Tự động migrate khi container khởi động
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<LibraryDbContext>();
+    db.Database.Migrate();
+}
 
 // ====================================
 // CONFIGURE MIDDLEWARE PIPELINE

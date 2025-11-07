@@ -39,8 +39,7 @@ namespace backend.DTOs.Book
         public int? Pages { get; set; }
         public string Description { get; set; }
 
-        [MaxLength(255)]
-        public string CoverImageUrl { get; set; }
+        public IFormFile? CoverImageFile { get; set; }
 
         [Required]
         public List<int> AuthorIds { get; set; } = new List<int>();

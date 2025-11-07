@@ -1,7 +1,8 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.Book;
 using backend.DTOs.Shared;
 using backend.Interfaces;
+using backend.Services.Storage;
 
 namespace backend.Services.Book
 {
@@ -9,11 +10,13 @@ namespace backend.Services.Book
     {
         private readonly IBookRepository _bookRepository;
         private readonly IMapper _mapper;
+        private readonly IMinioService _minioService;
 
-        public BookService(IBookRepository bookRepository, IMapper mapper)
+        public BookService(IBookRepository bookRepository, IMapper mapper, IMinioService minioService)
         {
             _bookRepository = bookRepository;
             _mapper = mapper;
+            _minioService = minioService;
         }
 
         public async Task<PagedResult<BookDto>> GetAllBooksAsync(BookQueryParameters queryParameters)
@@ -32,6 +35,19 @@ namespace backend.Services.Book
         public async Task<BookDto> CreateBookAsync(CreateBookDto createBookDto)
         {
             var bookModel = _mapper.Map<backend.Models.Book>(createBookDto);
+            if (createBookDto.CoverImageFile != null)
+            {
+                var file = createBookDto.CoverImageFile;
+                var objectName = $"books/{Guid.NewGuid()}_{file.FileName}";
+
+                using (var stream = file.OpenReadStream())
+                {
+                    await _minioService.UploadFileAsync(objectName, stream, file.Length, file.ContentType);
+                }
+
+                bookModel.CoverImageUrl = $"{_minioService.GetBaseUrl()}/{objectName}";
+
+            }
             var newBook = await _bookRepository.AddAsync(bookModel, createBookDto.AuthorIds, createBookDto.CategoryIds);
             return _mapper.Map<BookDto>(newBook);
         }
