@@ -1,14 +1,20 @@
-import { Outlet, Link } from "react-router-dom";
+import { Layout } from "antd";
 import Sidebar from "../../components/Sidebar";
+import { Outlet } from "react-router-dom";
+import "../../style/AdminOutlet.scss";
+const { Content } = Layout;
 
 function AdminOutlet() {
   return (
-    <div className="d-flex">
+  <div className="d-flex">
       <Sidebar />
-      <main className="content">
-        <Outlet />
-      </main>
+      <Layout>
+        <Content>
+          <Outlet />
+        </Content>
+      </Layout>
     </div>
+
   );
 }
 

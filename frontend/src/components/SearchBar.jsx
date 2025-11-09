@@ -1,20 +1,15 @@
 import Search from "../assets/Search.svg";
 import '../style/SearchBar.scss'
-export default function SearchBar({ value, onChange }) {
+import { SearchOutlined } from "@ant-design/icons";
+export default function SearchBar() {
   return (
-    <div className="search-wrapper">
+  <div className="search-box">
+    <SearchOutlined className="search-icon"/>
       <input
         type="text"
         placeholder="Search"
-        value={value}
-        onChange={onChange}
-        className="search-input"
-      />
-      <img
-        src= {Search}
-        alt="search-icon"
-        className="search-icon"
-      />
-    </div>
+        value= ""
+     />
+  </div>
   );
 }

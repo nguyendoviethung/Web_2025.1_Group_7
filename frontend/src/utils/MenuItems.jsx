@@ -1,45 +1,46 @@
-import {
-  faGaugeHigh,
-  faBook,
-  faUser,
-  faCommentDots,
-  faQrcode,
-  faGear,
-} from "@fortawesome/free-solid-svg-icons";
-
-
-// Admin menu items
-export const menuItemsAdmin = [
+  import {
+  DashboardOutlined,
+  BookOutlined,
+  UserOutlined,
+  MessageOutlined,
+  SettingOutlined,
+  QrcodeOutlined,
+} from "@ant-design/icons";
+  export const menuItemsAdmin = [
     {
-        title: "Dashboard",
-        icon : faGaugeHigh,
-        link: "dashboard"
+      key: "dashboard",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+      path: "/admin/dashboard",
     },
     {
-        title: "Books",
-        icon : faBook,
-        link: "books"
+      key: "books",
+      icon: <BookOutlined />,
+      label: "Books",
+      path: "/admin/books",
     },
     {
-        title: "Readers",
-        icon : faUser,
-        link: "readers"
+      key: "readers",
+      icon: <UserOutlined />,
+      label: "Readers",
+      path: "/admin/readers",
     },
     {
-        title: "Borrow Books",
-        icon : faQrcode,  
-        link: "borrow-books"
+      key: "borrow-books",
+      icon: <QrcodeOutlined />,
+      label: "Borrow Books",
+      path: "/admin/borrow-books",
     },
     {
-        title: "Messages",
-        icon : faCommentDots,
-        link: "messages"
+      key: "messages",
+      icon: <MessageOutlined />,
+      label: "Messages",
+      path: "/admin/messages",
     },
     {
-        title: "Setting",
-        icon : faGear,
-        link: "settings"
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: "Settings",
+      path: "/admin/settings",
     },
-];
-
-// Reader menu items can be added here in the future
+  ];
