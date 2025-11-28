@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import AdminLayout from "../components/layout/AdminLayout";
 import BooksPage from "../pages/BooksPage";
+import AuthorsPage from "../pages/AuthorsPage";
 
 const router = createBrowserRouter([
     // --- Auth routes (Đăng nhập / Đăng ký) ---
@@ -40,11 +41,7 @@ const router = createBrowserRouter([
             },
             {
                 path: "authors",
-                element: (
-                    <div style={{ padding: 24 }}>
-                        Authors Page (Coming Soon)
-                    </div>
-                ),
+                element: <AuthorsPage />,
             },
             {
                 path: "categories",

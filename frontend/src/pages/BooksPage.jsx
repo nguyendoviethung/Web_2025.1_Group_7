@@ -1,5 +1,5 @@
 import React from "react";
-import BooksManagement from "../components/books/BooksManagement";
+import BooksManagement from "../components/BooksManagement";
 
 export default function BooksPage({ onNavigate }) {
     return <BooksManagement onNavigate={onNavigate} />;
