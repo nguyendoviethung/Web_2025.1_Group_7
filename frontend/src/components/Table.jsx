@@ -8,7 +8,7 @@ import {
   CaretDownOutlined,
 } from "@ant-design/icons";
 
-export default function Table() {
+export default function Table({title_1, title_2 , title_3, title_4, title_5, title_6}) {
   const [books, setBooks] = useState([
     {
       id: "BK001",
@@ -131,22 +131,22 @@ export default function Table() {
               />
             </th>
             <th onClick={() => handleSort("id")} style = {{ cursor: "pointer"}}>
-              Book Id {renderSortIcon("id")}
+             {title_1} {renderSortIcon("id")}
             </th>
             <th onClick={() => handleSort("name")} style = {{ cursor: "pointer"}}>
-              Name {renderSortIcon("name")}
+              {title_2} {renderSortIcon("name")}
             </th>
             <th onClick={() => handleSort("author")} style = {{ cursor: "pointer"}}>
-              Author {renderSortIcon("author")}
+              {title_3} {renderSortIcon("author")}
             </th>
             <th onClick={() => handleSort("location")} style = {{ cursor: "pointer"}}>
-              Location {renderSortIcon("location")}
+              {title_4} {renderSortIcon("location")}
               <span className="location-subtitle">
-                Floor - Room - Bookshelf
+                {title_5}
               </span>
             </th>
             <th onClick={() => handleSort("quantity")} style = {{ cursor: "pointer"}}>
-              Quantity {renderSortIcon("quantity")}
+              {title_6} {renderSortIcon("quantity")}
             </th>
             <th>Action</th>
           </tr>
