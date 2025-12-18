@@ -56,6 +56,27 @@ const topBooks = [
   }
 ];
 
+const PieTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const { name, value, color } = payload[0].payload;
+
+    const total = ageData.reduce((sum, item) => sum + item.value, 0);
+    const percent = ((value / total) * 100).toFixed(1);
+
+    return (
+      <div className="pie-tooltip">
+        <div className="tooltip-title" style={{ color }}>
+          {name}
+        </div>
+        <div className="tooltip-value">
+          {percent}%
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const statCards = [
     { title: 'Total books', value: '178+', icon: <BookOutlined />, color: '#E6F4FF', iconColor: '#1890FF' },
@@ -123,7 +144,11 @@ export default function Dashboard() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
+
+                  <Tooltip content={<PieTooltip />} />
                 </PieChart>
+                  
+                 
               </ResponsiveContainer>
               <div className="legend">
                 {ageData.map((item, index) => (
