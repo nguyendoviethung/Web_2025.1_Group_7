@@ -1,67 +1,67 @@
-.sidebar {
-  background-color: #ffffff;
-  height: 100vh;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  position: sticky;
-  top: 0;
-  left: 0;
-  overflow: hidden;
+  .sidebar {
+    background-color: #ffffff;
+    height: 100vh;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    position: sticky;
+    top: 0;
+    left: 0;
+    overflow: hidden;
 
-  .logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 72px;
-    border-bottom: 1px solid #f0f0f0;
-    background-color: #fafafa;
-
-    .logo {
-      height: 38px;
-      width: auto;
-      transition: all 0.3s ease;
-    }
-  }
-
-  .sidebar-menu {
-    border-inline-end: none !important;
-    background: transparent !important;
-    padding: 12px 0;
-
-    .ant-menu-item {
+    .logo-container {
       display: flex;
+      justify-content: center;
       align-items: center;
-      height: 44px;
-      margin: 4px 12px;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      padding-inline: 16px !important; // giữ đều, tránh lệch khi hover
+      height: 72px;
+      border-bottom: 1px solid #f0f0f0;
+      background-color: #fafafa;
 
-      &:hover {
-        background-color: #e6f4ff !important;
-        color: #1677ff !important;
+      .logo {
+        height: 38px;
+        width: auto;
+        transition: all 0.3s ease;
       }
+    }
 
-      &.ant-menu-item-selected {
-        background-color: #1677ff !important;
-        color: #fff !important;
-        font-weight: 500;
+    .sidebar-menu {
+      border-inline-end: none !important;
+      background: transparent !important;
+      padding: 12px 0;
+
+      .ant-menu-item {
+        display: flex;
+        align-items: center;
+        height: 44px;
+        margin: 4px 12px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        padding-inline: 16px !important; // giữ đều, tránh lệch khi hover
+
+        &:hover {
+          background-color: #e6f4ff !important;
+          color: #1677ff !important;
+        }
+
+        &.ant-menu-item-selected {
+          background-color: #1677ff !important;
+          color: #fff !important;
+          font-weight: 500;
+
+          .anticon {
+            color: #fff !important;
+          }
+        }
 
         .anticon {
-          color: #fff !important;
+          font-size: 17px;
+          color: #555;
+          margin-right: 10px;
+          transition: color 0.2s ease;
         }
       }
 
-      .anticon {
-        font-size: 17px;
-        color: #555;
-        margin-right: 10px;
-        transition: color 0.2s ease;
+      .ant-menu-item::after {
+        display: none !important;
       }
     }
-
-    .ant-menu-item::after {
-      display: none !important;
-    }
   }
-}
