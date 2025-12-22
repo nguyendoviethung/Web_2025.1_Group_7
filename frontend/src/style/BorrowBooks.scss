@@ -1,0 +1,521 @@
+.borrow-books-container {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  padding: 2rem 2.4rem;
+
+  .page-header {
+  display: flex;
+  justify-content: space-between; // hoặc center nếu thích
+  align-items: center;
+  gap: 2.4rem; // chỉnh khoảng cách tại đây
+    .header-content {
+      h1 {
+        font-size: 2.8rem;
+        font-weight: 600;
+        color: #262626;
+        margin: 0 0 0.8rem 0;
+      }
+
+      p {
+        font-size: 1.4rem;
+        color: #8c8c8c;
+        margin: 0;
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1.2rem;
+      margin-right: 7rem;
+      .ant-btn {
+        height: 4rem;
+        padding: 0 2rem;
+        font-size: 1.4rem;
+        font-weight: 500;
+        border-radius: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+
+        .anticon {
+          font-size: 1.6rem;
+        }
+      }
+
+      .borrow-btn {
+        background: #6366f1;
+        border-color: #6366f1;
+
+        &:hover {
+          background: #5558e3;
+          border-color: #5558e3;
+        }
+      }
+
+      .return-btn {
+        border-color: #52c41a;
+        color: #52c41a;
+
+        &:hover {
+          background: #f6ffed;
+          border-color: #389e0d;
+          color: #389e0d;
+        }
+      }
+    }
+  }
+
+  .stats-row {
+    margin-bottom: 2.4rem;
+    justify-content: space-around;
+    .stat-card {
+      border-radius: 1.2rem;
+      border: none;
+      box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.06);
+
+      .ant-card-body {
+        padding: 2rem;
+      }
+
+      .ant-statistic-title {
+        font-size: 1.4rem;
+        color: #8c8c8c;
+        margin-bottom: 0.8rem;
+      }
+
+      .ant-statistic-content {
+        .ant-statistic-content-prefix {
+          margin-right: 0.8rem;
+          font-size: 2.4rem;
+        }
+
+        .ant-statistic-content-value {
+          font-size: 2.8rem;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  .table-card {
+    
+    border-radius: 1.2rem;
+    border: none;
+    box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+
+    .ant-card-body {
+      padding: 0;
+    }
+
+    .table-header {
+      padding: 2.4rem 2.4rem 0;
+
+      .ant-tabs {
+        .ant-tabs-nav {
+          margin-bottom: 1.6rem;
+
+          &::before {
+            border-bottom: 0.1rem solid #f0f0f0;
+          }
+        }
+
+        .ant-tabs-tab {
+          padding: 1.2rem 1.6rem;
+          font-size: 1.4rem;
+          font-weight: 500;
+
+          .ant-badge {
+            margin-left: 0.8rem;
+          }
+
+          &.ant-tabs-tab-active {
+            .ant-tabs-tab-btn {
+              color: #6366f1;
+            }
+          }
+        }
+
+        .ant-tabs-ink-bar {
+          background: #6366f1;
+        }
+      }
+
+      .table-actions {
+        margin-bottom: 1.6rem;
+
+        .ant-space {
+          flex-wrap: wrap;
+        }
+
+        .ant-input-affix-wrapper,
+        .ant-picker,
+        .ant-select-selector {
+          border-radius: 0.8rem;
+        }
+
+        .ant-btn {
+          border-radius: 0.8rem;
+          height: 3.2rem;
+          font-size: 1.3rem;
+        }
+      }
+    }
+
+    .ant-table-wrapper {
+      padding: 0 2.4rem 2.4rem;
+      overflow-x: auto;
+    }
+
+    .ant-table {
+      font-size: 1.3rem;
+    }
+
+    .transaction-id {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-weight: 500;
+      color: #6366f1;
+      font-size: 1.3rem;
+    }
+
+    .book-info {
+      display: flex;
+      gap: 1.2rem;
+      align-items: center;
+
+      .book-cover {
+        width: 5rem;
+        height: 7rem;
+        object-fit: cover;
+        border-radius: 0.6rem;
+        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.15);
+        flex-shrink: 0;
+      }
+
+      .book-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .book-title {
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: #262626;
+        margin-bottom: 0.4rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .book-isbn {
+        font-size: 1.2rem;
+        color: #8c8c8c;
+      }
+    }
+
+    .reader-info {
+      display: flex;
+      gap: 1.2rem;
+      align-items: center;
+
+      .ant-avatar {
+        flex-shrink: 0;
+      }
+
+      .reader-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .reader-name {
+        font-size: 1.4rem;
+        font-weight: 500;
+        color: #262626;
+        margin-bottom: 0.2rem;
+      }
+
+      .reader-id {
+        font-size: 1.2rem;
+        color: #8c8c8c;
+      }
+    }
+
+    .overdue-date {
+      color: #ff4d4f;
+      font-weight: 500;
+    }
+
+    .fine-amount {
+      color: #ff4d4f;
+      font-weight: 500;
+    }
+  }
+}
+
+// Scanner Modal Styles
+.scan-modal {
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    font-size: 1.8rem;
+    font-weight: 600;
+
+    .anticon {
+      font-size: 2.4rem;
+      color: #6366f1;
+    }
+  }
+
+  .ant-modal-body {
+    padding: 2.4rem;
+  }
+
+  .scanner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .scanner-frame {
+    position: relative;
+    width: 100%;
+    max-width: 40rem;
+    aspect-ratio: 1;
+    background: #000;
+    border-radius: 1.6rem;
+    overflow: hidden;
+    margin-bottom: 2.4rem;
+
+    .scanner-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .scanner-corner {
+        position: absolute;
+        width: 5rem;
+        height: 5rem;
+        border: 0.3rem solid #6366f1;
+
+        &.tl {
+          top: 20%;
+          left: 20%;
+          border-right: none;
+          border-bottom: none;
+          border-radius: 0.8rem 0 0 0;
+        }
+
+        &.tr {
+          top: 20%;
+          right: 20%;
+          border-left: none;
+          border-bottom: none;
+          border-radius: 0 0.8rem 0 0;
+        }
+
+        &.bl {
+          bottom: 20%;
+          left: 20%;
+          border-right: none;
+          border-top: none;
+          border-radius: 0 0 0 0.8rem;
+        }
+
+        &.br {
+          bottom: 20%;
+          right: 20%;
+          border-left: none;
+          border-top: none;
+          border-radius: 0 0 0.8rem 0;
+        }
+      }
+
+      .scanner-line {
+        position: absolute;
+        width: 60%;
+        height: 0.2rem;
+        background: linear-gradient(90deg, transparent, #6366f1, transparent);
+        animation: scan 2s ease-in-out infinite;
+      }
+    }
+  }
+
+  .scanner-instructions {
+    text-align: center;
+    margin-bottom: 2.4rem;
+
+    p {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #262626;
+
+      &.scanner-hint {
+        font-size: 1.3rem;
+        color: #8c8c8c;
+        margin-top: 0.8rem;
+      }
+    }
+  }
+
+  .scanner-actions {
+    display: flex;
+    gap: 1.2rem;
+    width: 100%;
+    justify-content: center;
+
+    .ant-btn {
+      height: 4rem;
+      padding: 0 3.2rem;
+      border-radius: 0.8rem;
+      font-weight: 500;
+      font-size: 1.4rem;
+
+      &.ant-btn-primary {
+        background: #6366f1;
+        border-color: #6366f1;
+
+        &:hover {
+          background: #5558e3;
+          border-color: #5558e3;
+        }
+      }
+    }
+  }
+}
+
+@keyframes scan {
+  0%, 100% {
+    top: 20%;
+  }
+  50% {
+    top: 70%;
+  }
+}
+
+// Detail Modal Styles
+.detail-content {
+  .detail-section {
+    h4 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #262626;
+      margin: 0 0 1.6rem 0;
+      padding-bottom: 0.8rem;
+      border-bottom: 0.2rem solid #f0f0f0;
+    }
+
+    p {
+      margin: 0.8rem 0;
+      font-size: 1.4rem;
+      color: #595959;
+
+      strong {
+        color: #262626;
+        margin-right: 0.8rem;
+      }
+    }
+
+    .book-detail,
+    .reader-detail {
+      display: flex;
+      gap: 1.6rem;
+      align-items: flex-start;
+
+      img {
+        width: 8rem;
+        height: 11rem;
+        object-fit: cover;
+        border-radius: 0.8rem;
+        box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.15);
+      }
+
+      > div {
+        flex: 1;
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 1024px) {
+  .borrow-books-container {
+    padding: 1.6rem;
+
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .header-actions {
+        width: 100%;
+
+        .ant-btn {
+          flex: 1;
+        }
+      }
+    }
+
+    .table-card .table-header .table-actions {
+      .ant-space {
+        flex-wrap: wrap;
+
+        .ant-space-item {
+          flex: 1;
+          min-width: 20rem;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .borrow-books-container {
+    .page-header {
+      .header-actions {
+        flex-direction: column;
+      }
+    }
+
+    .stats-row {
+      .ant-col {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+    }
+
+    .table-card {
+      .ant-table-wrapper {
+        overflow-x: auto;
+      }
+    }
+  }
+
+  .scan-modal {
+    .scanner-frame {
+      max-width: 30rem;
+    }
+
+    .scanner-actions {
+      flex-direction: column;
+
+      .ant-btn {
+        width: 100%;
+      }
+    }
+  }
+}
