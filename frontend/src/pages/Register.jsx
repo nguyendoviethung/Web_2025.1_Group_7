@@ -37,7 +37,17 @@ export default function Register() {
                         value = ""
                         onChange = {() => {}}
                     />
+                    
                 </div>
+                    <InputField
+                        name="password"
+                        label="Enter your password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value=""
+                        onChange={() => {}}
+                    />
+
                 </>
               }
               children_3={

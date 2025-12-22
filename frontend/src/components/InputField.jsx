@@ -7,11 +7,12 @@ export function InputField({ name, label, type, placeholder, value, onChange }) 
         {label}
       </label>
       <input 
-        type={type}
+        name = {name}
+        type= {type}
         value = {value}
-        placeholder={placeholder}
-        onChange={onChange}
-        className="form-input"
+        placeholder= {placeholder}
+        onChange= {onChange}
+        className= "form-input"
       />
     </div>
   );

@@ -1,0 +1,106 @@
+/* =========================
+   Custom Toast Base
+========================= */
+.custom-toast {
+  padding: 1.2rem 1.6rem !important;
+  border-radius: 0.8rem !important;
+  box-shadow: 0 0.4rem 1.6rem rgba(0, 0, 0, 0.12) !important;
+  font-size: 1.4rem !important;
+  font-weight: 500 !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: slideInDown 0.3s ease-out !important;
+
+  .anticon {
+    font-size: 1.8rem !important;
+    margin-right: 1rem !important;
+  }
+
+  /* ===== SUCCESS ===== */
+  &.custom-toast-success {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: #fff !important;
+
+    .anticon {
+      color: #fff !important;
+    }
+  }
+
+  /* ===== ERROR ===== */
+  &.custom-toast-error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    color: #fff !important;
+
+    .anticon {
+      color: #fff !important;
+    }
+  }
+
+  /* ===== WARNING ===== */
+  &.custom-toast-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #fff !important;
+
+    .anticon {
+      color: #fff !important;
+    }
+  }
+
+  /* ===== INFO ===== */
+  &.custom-toast-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    color: #fff !important;
+
+    .anticon {
+      color: #fff !important;
+    }
+  }
+
+  /* ===== LOADING ===== */
+  &.custom-toast-loading {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+    color: #fff !important;
+
+    .anticon {
+      color: #fff !important;
+      animation: spin 1s linear infinite;
+    }
+  }
+}
+
+/* =========================
+   Animations
+========================= */
+@keyframes slideInDown {
+  from {
+    transform: translate3d(0, -100%, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   Override Ant Design Message
+========================= */
+.ant-message {
+  top: 2.4rem !important;
+
+  .ant-message-notice {
+    padding: 0 !important;
+  }
+
+  .ant-message-notice-content {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
