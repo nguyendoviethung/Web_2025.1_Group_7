@@ -7,7 +7,7 @@ import Facebook from "../assets/Facebook.png";
 import LoginForm from "../components/LoginForm";
 import LoginBackground from "../components/LoginBackground";
 import { InputField } from "../components/InputField";
-import { login } from "../utils/authService";
+import { login } from "../services/authService";
 import Toast from "../components/Toast";
 export default function SignIn() {
   const navigate = useNavigate();
