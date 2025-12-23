@@ -31,12 +31,12 @@ export default function SignIn() {
   // Xử lí khi nhấn nút đăng nhập
   const handleSignIn = async () => {
     try {
-      setLoading(true);
-      setError("");
+      // setLoading(true);
+      // setError("");
 
-      const res = await login(formData);
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("user", JSON.stringify(res.user));
+      // const res = await login(formData);
+      // localStorage.setItem("token", res.token);
+      // localStorage.setItem("user", JSON.stringify(res.user));
 
       navigate("/admin/dashboard");
 
@@ -57,9 +57,9 @@ export default function SignIn() {
         onSubmit={(e) => {
           e.preventDefault();
            handleSignIn();
-     }}
-  loading={loading}
-        children_1={
+        }}
+          loading={loading}
+           children_1={
           <>
             <div className="d-flex justify-content-start align-items-center gap-3 mb-5">
               <Link to="/" className="google-signin">
