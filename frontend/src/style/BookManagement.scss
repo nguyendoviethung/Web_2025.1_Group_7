@@ -9,7 +9,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2.4rem;
- 
+
   h1 {
     font-family: Nunito, sans-serif;
     font-size: 2.8rem;
@@ -42,161 +42,421 @@
 
   &:hover {
     transform: translateY(-0.2rem);
-    box-shadow: 0 0.4rem 1.2rem rgba(102, 126, 234, 0.4);
+    box-shadow: 0 0.4rem 1.2rem rgba(44, 141, 244, 0.4);
   }
-
-  &:active {
-    transform: translateY(0);
-  }
+  &:active { transform: translateY(0); }
 }
 
-.book-id {
+// ── Modal Overlay ─────────────────────────────────────────────────────────────
+.bm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  justify-content: center;
+  padding: 2rem;
+  animation: overlayIn 0.18s ease;
 
-  .book-cover {
-    width: 4rem;
-    height: 5.6rem;
-    background: linear-gradient(135deg, #e0e7ff 0%, #f3f0ff 100%);
-    border: 0.2rem dashed #d9d9d9;
-    border-radius: 0.4rem;
-    flex-shrink: 0;
-  }
-
-  span {
-    font-weight: 500;
-    color: #262626;
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 }
 
-.book-name {
-  max-width: 30rem;
-  font-weight: 500;
-  color: #262626;
-}
-
-.author-info {
+// ── Modal Base ────────────────────────────────────────────────────────────────
+.bm-modal {
+  background: #fff;
+  border-radius: 1.6rem;
+  box-shadow: 0 2.4rem 6.4rem rgba(0, 0, 0, 0.16);
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  max-height: 90vh;
+  width: 100%;
+  animation: modalIn 0.2s ease;
 
-  .author-avatar {
-    width: 3.2rem;
-    height: 3.2rem;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #f0f0f0;
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(1.6rem) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
-}
 
-.action-cell {
-  position: relative;
+  &--view   { max-width: 68rem; }
+  &--edit   { max-width: 72rem; }
+  &--copies { max-width: 90rem; }
+  &--delete { max-width: 44rem; }
+  &--sm     { max-width: 48rem; } // Add Copy / Edit Copy
 
-  .btn-more {
-    width: 3.2rem;
-    height: 3.2rem;
+  &__header {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: transparent;
-    color: #8c8c8c;
-    border-radius: 0.6rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 2rem 2.4rem 1.6rem;
+    border-bottom: 0.1rem solid #f0f0f0;
+    flex-shrink: 0;
 
-    &:hover {
-      background: #f5f5f5;
-      color: #262626;
-    }
-  }
-
-  .dropdown-menu {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 0.4rem;
-    background: #ffffff;
-    border-radius: 0.8rem;
-    box-shadow: 0 0.4rem 1.6rem rgba(0, 0, 0, 0.12);
-    overflow: hidden;
-    z-index: 10;
-    min-width: 12rem;
-
-    .dropdown-item {
-      width: 100%;
+    &-title {
       display: flex;
       align-items: center;
       gap: 0.8rem;
-      padding: 1rem 1.6rem;
-      border: none;
-      background: transparent;
-      font-size: 1.4rem;
-      text-align: left;
-      cursor: pointer;
-      transition: background 0.2s ease;
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #262626;
+      &--danger { color: #ff4d4f; }
+    }
+  }
 
-      &.edit {
-        color: #667eea;
+  &__subtitle {
+    margin: 0.4rem 0 0;
+    font-size: 1.3rem;
+    color: #8c8c8c;
+    max-width: 52rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-        &:hover {
-          background: #f0f5ff;
-        }
-      }
+  &__body {
+    padding: 2rem 2.4rem;
+    overflow-y: auto;
+    flex: 1;
+    &--no-top-pad { padding-top: 0; }
+  }
 
-      &.delete {
-        color: #ff4d4f;
+  &__footer {
+    padding: 1.4rem 2.4rem;
+    border-top: 0.1rem solid #f0f0f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+}
 
-        &:hover {
-          background: #fff1f0;
-        }
-      }
+.bm-btn-close {
+  width: 3.2rem;
+  height: 3.2rem;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  flex-shrink: 0;
+  font-size: 1.4rem;
+  transition: all 0.15s;
+  &:hover { background: #ff4d4f; color: #fff; }
+}
+
+// ── Shared Buttons ────────────────────────────────────────────────────────────
+.bm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1.8rem;
+  border-radius: 0.8rem;
+  font-size: 1.4rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+
+  &--primary {
+    background: #2c8df4;
+    color: #fff;
+    &:hover { background: #0958d9; }
+  }
+  &--secondary {
+    background: #f5f5f5;
+    color: #333;
+    border: 0.1rem solid #e0e0e0;
+    &:hover { background: #e8e8e8; }
+  }
+  &--danger {
+    background: #ff4d4f;
+    color: #fff;
+    &:hover:not(:disabled) { background: #d9363e; }
+    &:disabled { background: #ffccc7; cursor: not-allowed; }
+  }
+}
+
+// ── View Modal ────────────────────────────────────────────────────────────────
+.view-hero {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.6rem;
+  align-items: flex-start;
+
+  .view-cover-img {
+    width: 8rem;
+    height: 11.2rem;
+    object-fit: cover;
+    border-radius: 0.8rem;
+    box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+  }
+
+  .view-hero__info {
+    flex: 1;
+    .view-title {
+      margin: 0 0 0.8rem;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #262626;
+      line-height: 1.4;
     }
   }
 }
 
+.view-genre-badge {
+  display: inline-block;
+  padding: 0.3rem 1rem;
+  background: #e6f4ff;
+  color: #2c8df4;
+  border-radius: 2rem;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
 
-/* Responsive design */
-// @media (max-width: 120rem) {
-//   .book-table {
-//     font-size: 1.3rem;
+.view-desc {
+  font-size: 1.35rem;
+  color: #595959;
+  line-height: 1.75;
+  margin: 0 0 1.8rem;
+  padding: 1.2rem 1.4rem;
+  background: #fafafa;
+  border-left: 0.3rem solid #2c8df4;
+  border-radius: 0 0.8rem 0.8rem 0;
+}
 
-//     .book-name {
-//       max-width: 20rem;
-//     }
-//   }
-// }
+.view-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
 
-// @media (max-width: 76.8rem) {
-//   .book-management {
-//     padding: 1.6rem;
-//   }
+  .view-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    background: #fafafa;
+    border-radius: 0.8rem;
+    font-size: 1.3rem;
 
-//   .header {
-//     flex-direction: column;
-//     align-items: flex-start;
-//     gap: 1.6rem;
+    > .anticon { color: #2c8df4; margin-top: 0.2rem; flex-shrink: 0; font-size: 1.4rem; }
 
-//     h1 {
-//       font-size: 2.4rem;
-//     }
+    label {
+      display: block;
+      font-size: 1.1rem;
+      color: #9e9e9e;
+      text-transform: uppercase;
+      letter-spacing: 0.05rem;
+      margin-bottom: 0.2rem;
+    }
+    span  { color: #333; font-weight: 500; }
+    small { color: #bbb; font-weight: 400; font-size: 1.1rem; }
+  }
+}
 
-//     .header-actions {
-//       width: 100%;
-//       flex-direction: column;
-//     }
-//   }
+.view-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
 
-//   .search-box input {
-//     width: 100%;
-//   }
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.4rem 1rem;
+    background: #f5f5f5;
+    border-radius: 1rem;
+    text-align: center;
 
-//   .table-container {
-//     overflow-x: auto;
-//   }
+    .stat-num { font-size: 2.6rem; font-weight: 700; color: #262626; line-height: 1; }
+    .stat-lbl { font-size: 1.1rem; color: #8c8c8c; margin-top: 0.4rem; }
 
-//   .book-table {
-//     min-width: 80rem;
-//   }
-// }
+    &--green  { background: #f6ffed; .stat-num { color: #52c41a; } }
+    &--orange { background: #fff7e6; .stat-num { color: #fa8c16; } }
+    &--blue   { background: #e6f4ff; .stat-num { color: #2c8df4; } }
+  }
+}
+
+// ── Edit/Add Form ─────────────────────────────────────────────────────────────
+.edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem;
+
+  .form-full { grid-column: 1 / -1; }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    label {
+      font-size: 1.3rem;
+      color: #555;
+      font-weight: 500;
+      small { color: #aaa; font-weight: 400; }
+    }
+    .req { color: #ff4d4f; margin-left: 0.2rem; }
+
+    input, textarea, select {
+      padding: 0.8rem 1.1rem;
+      border: 0.1rem solid #d9d9d9;
+      border-radius: 0.8rem;
+      font-size: 1.35rem;
+      color: #333;
+      outline: none;
+      resize: vertical;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      background: #fff;
+
+      &:focus {
+        border-color: #2c8df4;
+        box-shadow: 0 0 0 0.2rem rgba(44, 141, 244, 0.1);
+      }
+    }
+
+    select { cursor: pointer; }
+  }
+}
+
+.copy-modal-book-name {
+  font-size: 1.3rem;
+  color: #595959;
+  margin-bottom: 1.6rem;
+  padding: 0.8rem 1.2rem;
+  background: #fafafa;
+  border-radius: 0.8rem;
+  strong { color: #262626; }
+}
+
+// ── Manage Copies Modal ───────────────────────────────────────────────────────
+.copies-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1rem 2.4rem;
+  background: #fafafa;
+  border-bottom: 0.1rem solid #f0f0f0;
+  font-size: 1.35rem;
+  color: #555;
+  flex-shrink: 0;
+
+  strong { color: #262626; }
+  .cs-sep { width: 0.1rem; height: 1.6rem; background: #e0e0e0; }
+  .cs-green  strong { color: #389e0d; }
+  .cs-orange strong { color: #d46b08; }
+
+  .copies-add-btn {
+    margin-left: auto;
+    padding: 0.6rem 1.4rem;
+    font-size: 1.3rem;
+  }
+}
+
+.copies-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.35rem;
+  margin-top: 1.6rem;
+
+  thead tr {
+    background: #fafafa;
+    th {
+      padding: 1rem 1.2rem;
+      text-align: left;
+      font-weight: 600;
+      color: #595959;
+      border-bottom: 0.1rem solid #f0f0f0;
+      white-space: nowrap;
+    }
+  }
+
+  tbody tr {
+    &:hover { background: #fafafa; }
+    td {
+      padding: 1rem 1.2rem;
+      border-bottom: 0.1rem solid #f5f5f5;
+      color: #333;
+      vertical-align: middle;
+    }
+  }
+}
+
+.copy-id {
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  background: #f0f0f0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.4rem;
+  color: #555;
+}
+
+.copies-actions { white-space: nowrap; }
+
+.copies-action-btn {
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 0.1rem solid #e8e8e8;
+  border-radius: 0.6rem;
+  background: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  margin-right: 0.4rem;
+  transition: all 0.15s;
+
+  &--edit { color: #52c41a; &:hover { background: #f6ffed; border-color: #52c41a; } }
+  &--del  { color: #ff4d4f; &:hover { background: #fff1f0; border-color: #ff4d4f; } }
+}
+
+// ── Delete Modal ──────────────────────────────────────────────────────────────
+.delete-body {
+  text-align: center;
+  padding: 2.4rem !important;
+
+  .delete-icon-wrap {
+    width: 6.4rem;
+    height: 6.4rem;
+    background: #fff1f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.6rem;
+    font-size: 2.8rem;
+    color: #ff4d4f;
+  }
+
+  h3 { margin: 0 0 1rem; font-size: 1.7rem; color: #262626; font-weight: 600; }
+
+  p { font-size: 1.4rem; color: #595959; line-height: 1.65; margin: 0 0 1.6rem; }
+
+  .text-danger { color: #ff4d4f; font-weight: 600; }
+}
+
+// ── Delete Warning box: icon + text trong 1 hàng, text không bị vỡ ───────────
+.delete-warning {
+  background: #fff7e6;
+  border: 0.1rem solid #ffd591;
+  color: #d46b08;
+  font-size: 1.35rem;
+  line-height: 1.7;
+  padding: 1rem 1.4rem;
+  border-radius: 0.8rem;
+  text-align: center;
+
+  strong { color: #ad4e00; }
+}
+
+// ── Misc ──────────────────────────────────────────────────────────────────────
+.text-muted { color: #bbb; }

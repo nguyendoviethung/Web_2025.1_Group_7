@@ -1,212 +1,185 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import "../style/Table.scss";
 import {
-  EditOutlined,
-  DeleteOutlined,
   MoreOutlined,
   CaretUpOutlined,
   CaretDownOutlined,
 } from "@ant-design/icons";
 
-export default function Table({title_1, title_2 , title_3, title_4, title_5, title_6}) {
-  const [books, setBooks] = useState([
-    {
-      id: "BK001",
-      name: "Harry Potter and the Philosopher's Stone",
-      author: "J.K. Rowling",
-      authorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=JK",
-      location: "8 - 2 - 2",
-      quantity: 40,
-      selected: false,
-    },
-    {
-      id: "BK002",
-      name: "The Lord of the Rings",
-      author: "J.R.R. Tolkien",
-      authorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Tolkien",
-      location: "5 - 1 - 3",
-      quantity: 25,
-      selected: false,
-    },
-    {
-      id: "BK003",
-      name: "1984",
-      author: "George Orwell",
-      authorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Orwell",
-      location: "3 - 4 - 1",
-      quantity: 30,
-      selected: false,
-    },
-    {
-      id: "BK004",
-      name: "To Kill a Mockingbird",
-      author: "Harper Lee",
-      authorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Harper",
-      location: "2 - 3 - 5",
-      quantity: 18,
-      selected: false,
-    },
-    {
-      id: "BK005",
-      name: "Pride and Prejudice",
-      author: "Jane Austen",
-      authorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-      location: "7 - 2 - 1",
-      quantity: 22,
-      selected: false,
-    },
-  ]);
-
+export default function Table({ columns = [], rows = [], actions }) {
+  const [data, setData] = useState(rows.map((r) => ({ ...r, selected: false })));
   const [selectAll, setSelectAll] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [dropdown, setDropdown] = useState({ open: false, row: null, top: 0, left: 0 });
 
-  // trạng thái sắp xếp
-  const [sortConfig, setSortConfig] = useState({
-    key: null, // tên cột đang sắp xếp
-    direction: "asc", // asc | desc
-  });
+  const dropdownRef  = useRef(null);
+  // Dùng ref song song với state để đọc giá trị hiện tại bên trong event listener
+  // (state trong closure của addEventListener bị stale)
+  const dropdownOpenRef    = useRef(false);
+  const dropdownRowIdRef   = useRef(null);
 
-  // --- Chức năng chọn checkbox ---
+  useEffect(() => {
+    setData(rows.map((r) => ({ ...r, selected: false })));
+  }, [rows]);
+
+  // Giữ ref đồng bộ với state
+  useEffect(() => {
+    dropdownOpenRef.current  = dropdown.open;
+    dropdownRowIdRef.current = dropdown.row?.id ?? null;
+  }, [dropdown]);
+
+  // Đóng khi click ra ngoài — KHÔNG dùng btn-more vì btn-more tự xử lý toggle
+  useEffect(() => {
+    const handler = (e) => {
+      // Nếu click vào btn-more → bỏ qua, để onClick trên button tự toggle
+      if (e.target.closest && e.target.closest(".btn-more")) return;
+      // Nếu click vào trong dropdown → bỏ qua
+      if (dropdownRef.current && dropdownRef.current.contains(e.target)) return;
+      // Còn lại → đóng
+      setDropdown((d) => ({ ...d, open: false }));
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Đóng khi scroll
+  useEffect(() => {
+    const handler = () => setDropdown((d) => ({ ...d, open: false }));
+    window.addEventListener("scroll", handler, true);
+    return () => window.removeEventListener("scroll", handler, true);
+  }, []);
+
   const handleSelectAll = () => {
-    const newSelectAll = !selectAll;
-    setSelectAll(newSelectAll);
-    setBooks(books.map((book) => ({ ...book, selected: newSelectAll })));
+    const next = !selectAll;
+    setSelectAll(next);
+    setData(data.map((r) => ({ ...r, selected: next })));
   };
 
-  const handleSelectBook = (id) => {
-    setBooks(
-      books.map((book) =>
-        book.id === id ? { ...book, selected: !book.selected } : book
-      )
-    );
-  };
+  const handleSelectRow = (id) =>
+    setData(data.map((r) => (r.id === id ? { ...r, selected: !r.selected } : r)));
 
-  const toggleDropdown = (id) => {
-    setActiveDropdown(activeDropdown === id ? null : id);
-  };
-
-  // --- Chức năng sắp xếp ---
   const handleSort = (key) => {
-    let direction = "asc";
-
-    // nếu đang sort cùng 1 cột → đảo chiều
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-
-    const sorted = [...books].sort((a, b) => {
-      if (typeof a[key] === "string") {
-        return direction === "asc"
-          ? a[key].localeCompare(b[key])
-          : b[key].localeCompare(a[key]);
-      } else {
-        return direction === "asc" ? a[key] - b[key] : b[key] - a[key];
-      }
+    const direction =
+      sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
+    const sorted = [...data].sort((a, b) => {
+      if (typeof a[key] === "string")
+        return direction === "asc" ? a[key].localeCompare(b[key]) : b[key].localeCompare(a[key]);
+      return direction === "asc" ? a[key] - b[key] : b[key] - a[key];
     });
-
-    setBooks(sorted);
+    setData(sorted);
     setSortConfig({ key, direction });
   };
 
-  // --- Render biểu tượng sắp xếp ---
   const renderSortIcon = (key) => {
     if (sortConfig.key !== key) return <CaretDownOutlined style={{ opacity: 0.3 }} />;
-    return sortConfig.direction === "asc" ? (
-      <CaretUpOutlined style={{ color: "#1677ff" }} />
-    ) : (
-      <CaretDownOutlined style={{ color: "#1677ff" }} />
-    );
+    return sortConfig.direction === "asc"
+      ? <CaretUpOutlined style={{ color: "#1677ff" }} />
+      : <CaretDownOutlined style={{ color: "#1677ff" }} />;
   };
 
+  const handleBtnMoreClick = (e, row) => {
+    // Đọc từ ref — luôn là giá trị hiện tại, không bị stale closure
+    const isThisRowOpen = dropdownOpenRef.current && dropdownRowIdRef.current === row.id;
+
+    if (isThisRowOpen) {
+      // Đang mở row này → đóng lại
+      setDropdown((d) => ({ ...d, open: false }));
+    } else {
+      // Đóng row cũ (nếu có) và mở row mới
+      const rect = e.currentTarget.getBoundingClientRect();
+      setDropdown({
+        open: true,
+        row,
+        top:  rect.bottom + 6,
+        left: rect.right - 170,
+      });
+    }
+  };
+
+  const hasActions = actions && actions.length > 0;
+
   return (
-    <div className="table-container">
-      <table className="book-table">
-        <thead>
-          <tr>
-            <th className="checkbox-col">
-              <input
-                type="checkbox"
-                checked={selectAll}
-                onChange={handleSelectAll}
-              />
-            </th>
-            <th onClick={() => handleSort("id")} style = {{ cursor: "pointer"}}>
-             {title_1} {renderSortIcon("id")}
-            </th>
-            <th onClick={() => handleSort("name")} style = {{ cursor: "pointer"}}>
-              {title_2} {renderSortIcon("name")}
-            </th>
-            <th onClick={() => handleSort("author")} style = {{ cursor: "pointer"}}>
-              {title_3} {renderSortIcon("author")}
-            </th>
-            <th onClick={() => handleSort("location")} style = {{ cursor: "pointer"}}>
-              {title_4} {renderSortIcon("location")}
-              <span className="location-subtitle">
-                {title_5}
-              </span>
-            </th>
-            <th onClick={() => handleSort("quantity")} style = {{ cursor: "pointer"}}>
-              {title_6} {renderSortIcon("quantity")}
-            </th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {books.map((book) => (
-            <tr key={book.id}>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={book.selected}
-                  onChange={() => handleSelectBook(book.id)}
-                />
-              </td>
-              <td>
-                <div className="book-id">
-                  <span>{book.id}</span>
-                </div>
-              </td>
-              <td className="book-name">{book.name}</td>
-              <td>
-                <div className="author-info">
-                  <img
-                    src={book.authorAvatar}
-                    alt={book.author}
-                    className="author-avatar"
+    <>
+      <div className="table-container">
+        <table className="book-table">
+          <thead>
+            <tr>
+              <th className="checkbox-col">
+                <input type="checkbox" checked={selectAll} onChange={handleSelectAll} />
+              </th>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  onClick={() => col.sortable !== false && handleSort(col.key)}
+                  style={{ cursor: col.sortable !== false ? "pointer" : "default" }}
+                >
+                  {col.label}
+                  {col.sortable !== false && renderSortIcon(col.key)}
+                  {col.subtitle && <span className="location-subtitle">{col.subtitle}</span>}
+                </th>
+              ))}
+              {hasActions && <th className="action-col">Action</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.id} className={row.selected ? "row-selected" : ""}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={row.selected}
+                    onChange={() => handleSelectRow(row.id)}
                   />
-                  <span>{book.author}</span>
-                </div>
-              </td>
-              <td>{book.location}</td>
-              <td>
-                <strong>{book.quantity}</strong>
-              </td>
-              <td>
-                <div className="action-cell">
-                  <button
-                    className="btn-more"
-                    onClick={() => toggleDropdown(book.id)}
-                  >
-                    <MoreOutlined />
-                  </button>
-                  {activeDropdown === book.id && (
-                    <div className="dropdown-menu">
-                      <button className="dropdown-item edit">
-                        <EditOutlined />
-                        Edit
-                      </button>
-                      <button className="dropdown-item delete">
-                        <DeleteOutlined />
-                        Delete
+                </td>
+                {columns.map((col) => (
+                  <td key={col.key}>
+                    {col.render ? col.render(row[col.key], row) : row[col.key] ?? "—"}
+                  </td>
+                ))}
+                {hasActions && (
+                  <td>
+                    <div className="action-cell">
+                      <button
+                        className={`btn-more ${
+                          dropdown.open && dropdown.row?.id === row.id ? "btn-more--active" : ""
+                        }`}
+                        onClick={(e) => handleBtnMoreClick(e, row)}
+                      >
+                        <MoreOutlined />
                       </button>
                     </div>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {dropdown.open && dropdown.row &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="table-dropdown-portal"
+            style={{ top: dropdown.top, left: dropdown.left }}
+          >
+            {actions.map((action, idx) => (
+              <button
+                key={idx}
+                className={`table-dropdown-item ${action.className || ""}`}
+                onClick={() => {
+                  setDropdown((d) => ({ ...d, open: false }));
+                  action.onClick(dropdown.row);
+                }}
+              >
+                {action.icon && <span className="table-dropdown-icon">{action.icon}</span>}
+                {action.label}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

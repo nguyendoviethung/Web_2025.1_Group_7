@@ -90,6 +90,19 @@
   }
 }
 
+.reader-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .reader-avatar {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f0f0f0;
+  }
+}
 .action-cell {
   position: relative;
 

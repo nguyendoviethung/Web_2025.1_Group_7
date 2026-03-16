@@ -1,49 +1,59 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../style/SignIn.scss";
-import Google from "../assets/Google.png";
-import Apple from "../assets/Apple.png";
-import Facebook from "../assets/Facebook.png";
 import LoginForm from "../components/LoginForm";
 import LoginBackground from "../components/LoginBackground";
 import { InputField } from "../components/InputField";
 import { login } from "../services/authService";
 import Toast from "../components/Toast";
+import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
+
 export default function SignIn() {
   const navigate = useNavigate();
+  const passwordRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    username: "",
-    password: ""
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading]   = useState(false);
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
- 
-  // Xử lí khi nhập liệu vào form
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
   
-  // Xử lí khi nhấn nút đăng nhập
+  const handleEmailKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      passwordRef.current?.focus();
+    }
+  };
+
   const handleSignIn = async () => {
+    if (!formData.email || !formData.password) {
+      Toast.warning("Please enter email and password");
+      return;
+    }
+
     try {
-      // setLoading(true);
-      // setError("");
+      setLoading(true);
 
-      // const res = await login(formData);
-      // localStorage.setItem("token", res.token);
-      // localStorage.setItem("user", JSON.stringify(res.user));
+      const res = await login(formData);
 
-      navigate("/admin/dashboard");
+      // Backend trả về accessToken (không phải token)
+      localStorage.setItem("accessToken", res.accessToken);
+      localStorage.setItem("user", JSON.stringify(res.user));
+
+      Toast.success("Login successful!");
+
+      // Điều hướng theo role
+      if (res.user.role === "staff") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/reader/home");
+      }
 
     } catch (err) {
-      Toast.error(
-      err.message || "Invalid username or password"
-    );
+      Toast.error(err.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -54,63 +64,56 @@ export default function SignIn() {
       <LoginForm
         title="Sign in"
         action={loading ? "Signing in..." : "Sign In"}
-        onSubmit={(e) => {
-          e.preventDefault();
-           handleSignIn();
-        }}
-          loading={loading}
-           children_1={
+        onSubmit={(e) => { e.preventDefault(); handleSignIn(); }}
+        loading={loading}
+        formFields={
           <>
-            <div className="d-flex justify-content-start align-items-center gap-3 mb-5">
-              <Link to="/" className="google-signin">
-                <img src={Google} alt="Google Logo" className="social-logo" />
-                Sign in with Google
-              </Link>
+            <InputField
+              name="email"
+              label="Enter your email"
+              type="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+              onKeyDown={handleEmailKeyDown} 
+            />
 
-              <button className="logo-wrapper">
-                <img src={Facebook} alt="Facebook logo" className="social-logo" />
-              </button>
-
-              <button className="logo-wrapper">
-                <img src={Apple} alt="Apple logo" className="social-logo" />
+            <div className="password-wrapper">
+              <InputField
+                name="password"
+                label="Enter your password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
+                inputRef={passwordRef}         
+              />
+              <button
+                type="button"
+                className="eye-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword
+                  ? <EyeInvisibleOutlined />
+                  : <EyeOutlined />
+                }
               </button>
             </div>
-
-            <InputField
-              name="username"
-              label="Enter your username"
-              type="email"
-              placeholder="Enter your username"
-              value={formData.username}
-              onChange={handleChange}
-            />
-
-            <InputField
-              name="password"
-              label="Enter your password"
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-
-            {error && <p className="text-danger mt-2">{error}</p>}
           </>
         }
-
-        children_2={
+        forgotPassword={
           <div className="forgot-password">
             <Link to="/" className="link-forgot-password">
               Forgot your password?
             </Link>
           </div>
         }
-
-        children_3={
-          <div className="link-text d-flex flex-column align-items-start mr-5">
-            No Account ?
+        registerSection={
+          <div className="link-text d-flex flex-column align-items-start">
+            No Account?
             <Link to="/register" className="register">
-              <div>Sign up</div>
+              Sign up
             </Link>
           </div>
         }

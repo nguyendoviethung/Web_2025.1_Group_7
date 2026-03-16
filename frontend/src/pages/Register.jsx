@@ -9,7 +9,7 @@ import "../style/Register.scss";
 
 export default function Register() {
   const navigate = useNavigate();
-
+  
   const [formData, setFormData] = useState({
     email: "",
     username: "",
@@ -61,7 +61,7 @@ export default function Register() {
         action={loading ? "Signing up..." : "Sign up"}
         onSubmit={handleRegister}
         loading={loading}
-        children_1={
+        formFields={
           <>
             <InputField
               name="email"
@@ -72,37 +72,26 @@ export default function Register() {
               onChange={handleChange}
             />
 
-            <div className="d-flex gap-4">
               <InputField
                 name="username"
-                label="Enter your username"
+                label="Enter your password"
                 type="text"
-                placeholder="Enter your username"
+                placeholder="Enter your password"
                 value={formData.username}
                 onChange={handleChange}
               />
 
-              <InputField
-                name="phone"
-                label="Contact Number"
-                type="text"
-                placeholder="Contact Number"
-                value={formData.phone}
-                onChange={handleChange}
-              />
-            </div>
-
             <InputField
               name="password"
-              label="Enter your password"
+              label="Confirm password"
               type="password"
-              placeholder="Enter your password"
+              placeholder="Confirm password"
               value={formData.password}
               onChange={handleChange}
             />
           </>
         }
-        children_3={
+        footerContent={
           <div className="link-text d-flex flex-column align-items-start">
             Have an Account ?
             <Link to="/" className="register">

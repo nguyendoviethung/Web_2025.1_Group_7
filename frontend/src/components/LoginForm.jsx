@@ -2,9 +2,10 @@ import "../style/LoginForm.scss";
 
 export default function LoginForm({
   title,
-  children_1,
-  children_2,
-  children_3,
+  formFields,
+  forgotPassword,
+  registerSection,
+  footerContent,
   action,
   onSubmit,
   loading
@@ -17,11 +18,14 @@ export default function LoginForm({
 
       <div className="login-title">{title}</div>
 
-      {children_1}
-      {children_2}
+         {formFields}
+         {forgotPassword}
 
       <div className="d-flex justify-content-end w-100 mt-5">
-        {children_3}
+
+         {registerSection}
+         {footerContent}
+
         <button
           type="submit"
           className="login-button"

@@ -5,26 +5,6 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import  axiosClient  from '../../services/axiosClient.jsx';
 import '../../style/Dashboard.scss';
 
-const PieTooltip = ({ active, payload, ageData }) => {
-  if (active && payload && payload.length) {
-    const { name, value, color } = payload[0].payload;
-    const total = ageData.reduce((sum, item) => sum + item.value, 0);
-    const percent = ((value / total) * 100).toFixed(1);
-
-    return (
-      <div className="pie-tooltip">
-        <div className="tooltip-title" style={{ color }}>
-          {name}
-        </div>
-        <div className="tooltip-value">
-          {percent}%
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
-
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState({ // Thẻ thống kê
@@ -34,11 +14,11 @@ export default function Dashboard() {
     totalBorrowed: 0
   });
   const [monthlyData, setMonthlyData] = useState([]); // Dữ liệu mượn sách theo tháng
-  const [genreData, setGenreData] = useState([]); // Dữ liệu phân bố thể loại
-  const [ageData, setAgeData] = useState([]); // Dữ liệu phân bố độ tuổi
+  const [overdueData, setoverdueData] = useState([]); // Dữ liệu sách đang quá hạn 
+  const [activeReaders, setactiveReaders] = useState([]); // Dữ liệu những độc mượn nhiều nhất 
   const [topBooks, setTopBooks] = useState([]); // Sách được mượn nhiều nhất
 
-  // Fetch all dashboard data
+  // Lấy tất cả dữ liệu 
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -58,8 +38,8 @@ export default function Dashboard() {
 
       setStatsData(stats);
       setMonthlyData(monthly);
-      setGenreData(genre);
-      setAgeData(age);
+      setoverdueData(genre);
+      setactiveReaders(age);
       setTopBooks(top);
       
     } catch (error) {
@@ -133,28 +113,28 @@ const fetchTopBooks = async () => {
 
   const statCards = [
     { 
-      title: 'Total books', 
+      title: 'Total Books', 
       value: `${statsData.totalBooks}+`, 
       icon: <BookOutlined />, 
       color: '#E6F4FF', 
       iconColor: '#1890FF' 
     },
     { 
-      title: 'Total readers', 
+      title: 'Total Readers', 
       value: `${statsData.totalReaders}+`, 
       icon: <UserOutlined />, 
       color: '#E6FFFB', 
       iconColor: '#52C41A' 
     },
     { 
-      title: 'Overdue books', 
+      title: 'Overdue Books', 
       value: `${statsData.overdueBooks}+`, 
       icon: <ClockCircleOutlined />, 
       color: '#FFF1F0', 
       iconColor: '#FF4D4F' 
     },
     { 
-      title: 'Total books borrowed', 
+      title: 'Currently Borrowed', 
       value: `${statsData.totalBorrowed}+`, 
       icon: <ReadOutlined />, 
       color: '#F0E6FF', 
@@ -218,36 +198,23 @@ const fetchTopBooks = async () => {
           </Col>
 
           <Col xs={24} lg={12}>
-            <Card title="Readership chart by age" className="chart-card">
-              {ageData.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={ageData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {ageData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<PieTooltip ageData={ageData} />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="legend">
-                    {ageData.map((item, index) => (
-                      <div key={index} className="legend-item">
-                        <span className="legend-color" style={{ backgroundColor: item.color }}></span>
-                        <span className="legend-text">{item.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+            <Card title="Overdue Books Trend" className="chart-card">
+              {/* <div className="year-badge">2025</div> */}
+              {overdueData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={overdueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#ff4d4f"
+                      strokeWidth={3}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               ) : (
                 <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   No data available
@@ -259,29 +226,41 @@ const fetchTopBooks = async () => {
 
         <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
           <Col xs={24} lg={12}>
-            <Card title="Number of books by genre" className="chart-card">
-              <div className="year-badge">2025</div>
-              {genreData.length > 0 ? (
+            <Card title="Top Active Readers" className="chart-card">
+              {activeReaders.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={genreData}>
+                  <BarChart data={activeReaders}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="genre" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 11 }}
+                      angle={-20}
+                      textAnchor="end"
+                      height={60}
+                    />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#8884d8" radius={[8, 8, 0, 0]}>
-                      {genreData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={`hsl(${index * 30}, 70%, 60%)`} />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {activeReaders.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={`hsl(${index * 40}, 70%, 60%)`} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div
+                  style={{
+                    height: 300,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
                   No data available
                 </div>
               )}
             </Card>
-          </Col>
+          </Col>  
 
           <Col xs={24} lg={12}>
             <Card title="Top most borrowed books" className="chart-card">
