@@ -1,67 +1,149 @@
-  .sidebar {
-    background-color: #ffffff;
-    height: 100vh;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    position: sticky;
-    top: 0;
-    left: 0;
-    overflow: hidden;
+.sidebar {
+  background-color: #ffffff;
+  height: 100vh;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: sticky;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
 
-    .logo-container {
+  .logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 72px;
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fafafa;
+    flex-shrink: 0; // không bị co lại
+
+    .logo {
+      height: 38px;
+      width: auto;
+      transition: all 0.3s ease;
+    }
+  }
+
+  // ─── MENU ──────────────────────────────────────────
+  .sidebar-menu {
+    flex: 1;           // chiếm hết khoảng trống giữa logo và footer
+    overflow-y: auto;  // cuộn nếu menu dài
+    border-inline-end: none !important;
+    background: transparent !important;
+    padding: 12px 0;
+
+    // ẩn scrollbar nhưng vẫn cuộn được
+    &::-webkit-scrollbar {
+      width: 0;
+    }
+
+    .ant-menu-item {
       display: flex;
-      justify-content: center;
       align-items: center;
-      height: 72px;
-      border-bottom: 1px solid #f0f0f0;
-      background-color: #fafafa;
+      height: 44px;
+      margin: 4px 12px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      padding-inline: 16px !important;
+      color: #4c4b4b !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      &:hover {
+        background-color: #e6f4ff !important;
+        color: #1677ff !important;
+      }
 
-      .logo {
-        height: 38px;
-        width: auto;
-        transition: all 0.3s ease;
+      &.ant-menu-item-selected {
+        background-color: #1677ff !important;
+        color: #fff !important;
+        font-weight: 500;
+
+        .anticon {
+          color: #fff !important;
+        }
+      }
+
+      .anticon {
+        font-size: 17px;
+        color: #555;
+        margin-right: 10px;
+        transition: color 0.2s ease;
       }
     }
 
-    .sidebar-menu {
-      border-inline-end: none !important;
-      background: transparent !important;
-      padding: 12px 0;
+    .ant-menu-item::after {
+      display: none !important;
+    }
+  }
 
-      .ant-menu-item {
-        display: flex;
-        align-items: center;
-        height: 44px;
-        margin: 4px 12px;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        padding-inline: 16px !important; // giữ đều, tránh lệch khi hover
+  // ─── FOOTER (logout) ───────────────────────────────
+  .sidebar-footer {
+    flex-shrink: 0;              // không bị co lại
+    padding: 1.2rem;
+    border-top: 1px solid #f0f0f0;
+    background-color: #ffffff;
 
-        &:hover {
-          background-color: #e6f4ff !important;
-          color: #1677ff !important;
-        }
+    .logout-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 4.4rem;
+      padding: 0 1.6rem;
+      border: none;
+      border-radius: 0.6rem;
+      background: transparent;
+      color: #5e5c5c;
+      font-size: 1.4rem;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
 
-        &.ant-menu-item-selected {
-          background-color: #1677ff !important;
-          color: #fff !important;
-          font-weight: 500;
-
-          .anticon {
-            color: #fff !important;
-          }
-        }
-
-        .anticon {
-          font-size: 17px;
-          color: #555;
-          margin-right: 10px;
-          transition: color 0.2s ease;
-        }
+      .logout-icon {
+        font-size: 1.7rem;
+        flex-shrink: 0;
       }
 
-      .ant-menu-item::after {
-        display: none !important;
+      span {
+        white-space: nowrap;
+      }
+
+      &:hover {
+        background-color: #fff1f0;
+        color: #cf1322;
+      }
+
+      &:active {
+        background-color: #ffccc7;
+        transform: scale(0.98);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
     }
   }
+}
+
+// ─── LOGOUT MODAL ────────────────────────────────────
+.logout-modal-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #262626;
+  display: flex;
+  align-items: center;
+}
+
+// Override Ant Design modal button size
+.ant-modal-footer {
+  .ant-btn {
+    height: 3.6rem;
+    font-size: 1.4rem;
+    border-radius: 0.6rem;
+  }
+}

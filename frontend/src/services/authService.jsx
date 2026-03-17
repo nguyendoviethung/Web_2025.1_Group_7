@@ -1,22 +1,28 @@
 import axiosClient from "./axiosClient";
 
 export const login = async (data) => {
-  return axiosClient.post("/auth/login", data);    
+  return axiosClient.post("/auth/login", data);
 };
 
 export const register = async (data) => {
-  return axiosClient.post("/auth/register", data); 
+  return axiosClient.post("/auth/register", data);
 };
 
 export const logout = async () => {
-  await axiosClient.post("/auth/logout");          
-  localStorage.clear();
+  try {
+    await axiosClient.post("/auth/logout"); // xóa refreshToken trong DB + cookie
+  } catch {
+    // bỏ qua lỗi network, vẫn xóa local
+  } finally {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+  }
 };
 
 export const getMe = async () => {
-  return axiosClient.get("/auth/me");            
+  return axiosClient.get("/auth/me");
 };
 
 export const refreshToken = async () => {
-  return axiosClient.post("/auth/refresh");        
+  return axiosClient.post("/auth/refresh");
 };
