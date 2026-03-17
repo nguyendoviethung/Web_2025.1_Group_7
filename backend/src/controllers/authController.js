@@ -36,21 +36,34 @@ const authController = {
   // ─── LOGIN ─────────────────────────
   async login(req, res) {
     try {
-      const { email, password } = req.body;
+       const { email, password } = req.body;
 
-      const user = await UserModel.findByEmail(email);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid email or password' });
-      }
+    // ─── DEBUG — xóa sau khi fix ───
+    console.log('─────────────────────────────');
+    console.log('BODY nhận được:', req.body);
+    console.log('Email:', email);
+    console.log('Password:', password);
+    console.log('─────────────────────────────');
 
-      if (user.status !== 'active') {
-        return res.status(403).json({ message: 'Account disabled' });
-      }
+    const user = await UserModel.findByEmail(email);
+    console.log('User tìm được:', user ? `id=${user.id}, email=${user.email}, status=${user.status}` : 'KHÔNG TÌM THẤY');
 
-      const isMatch = await compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: 'Invalid email or password' });
-      }
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (user.status !== 'active') {
+      console.log('TÀI KHOẢN KHÔNG ACTIVE:', user.status);
+      return res.status(403).json({ message: 'Account disabled' });
+    }
+
+    console.log('Hash trong DB:', user.password);
+    const isMatch = await compare(password, user.password);
+    console.log('Password khớp:', isMatch);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
 
       const payload = { id: user.id, role: user.role };
 

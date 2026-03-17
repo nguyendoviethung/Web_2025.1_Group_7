@@ -1,12 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider } from "react-router-dom"; 
+import { RouterProvider } from "react-router-dom";
+import { App as AntApp } from "antd";       // ← thêm
 import router from "./router/index.jsx";
-import './style/Reset.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import "./style/Reset.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
+    <AntApp>                                 
       <RouterProvider router={router} />
+    </AntApp>
   </React.StrictMode>
 );

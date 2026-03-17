@@ -112,8 +112,9 @@
 
   .eye-toggle {
     position: absolute;
-    right: 1.5rem;
-    bottom: 3.5rem;
+    right: 1.2rem;
+    top: 50%;
+    transform: translateY(-30%);  // ← căn giữa theo chiều dọc input
     background: transparent;
     border: none;
     cursor: pointer;
@@ -123,5 +124,6 @@
     display: flex;
     align-items: center;
     transition: color 0.2s ease;
+
   }
-} 
+}

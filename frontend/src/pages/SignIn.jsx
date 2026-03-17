@@ -5,22 +5,22 @@ import LoginForm from "../components/LoginForm";
 import LoginBackground from "../components/LoginBackground";
 import { InputField } from "../components/InputField";
 import { login } from "../services/authService";
-import Toast from "../components/Toast";
+import { useToast } from "../components/Toast";  // ← đổi import
 import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
 
 export default function SignIn() {
-  const navigate = useNavigate();
+  const navigate    = useNavigate();
+  const toast       = useToast();               // ← gọi hook
   const passwordRef = useRef(null);
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData]         = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading]           = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  
   const handleEmailKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -30,30 +30,29 @@ export default function SignIn() {
 
   const handleSignIn = async () => {
     if (!formData.email || !formData.password) {
-      Toast.warning("Please enter email and password");
+      toast.warning("Please enter email and password");  // ← toast.xxx
       return;
     }
 
     try {
       setLoading(true);
-
       const res = await login(formData);
 
-      // Backend trả về accessToken (không phải token)
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("user", JSON.stringify(res.user));
 
-      Toast.success("Login successful!");
+      toast.success("Login successful!");          
 
-      // Điều hướng theo role
-      if (res.user.role === "staff") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/reader/home");
-      }
+      setTimeout(() => {
+        if (res.user.role === "staff") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/reader/home");
+        }
+      }, 500);
 
     } catch (err) {
-      Toast.error(err.message || "Invalid email or password");
+      toast.error(err.message || "Invalid email or password"); // ← toast.xxx
     } finally {
       setLoading(false);
     }
@@ -75,9 +74,8 @@ export default function SignIn() {
               placeholder="Enter your email"
               value={formData.email}
               onChange={handleChange}
-              onKeyDown={handleEmailKeyDown} 
+              onKeyDown={handleEmailKeyDown}
             />
-
             <div className="password-wrapper">
               <InputField
                 name="password"
@@ -86,7 +84,7 @@ export default function SignIn() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleChange}
-                inputRef={passwordRef}         
+                inputRef={passwordRef}
               />
               <button
                 type="button"
@@ -94,10 +92,7 @@ export default function SignIn() {
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
               >
-                {showPassword
-                  ? <EyeInvisibleOutlined />
-                  : <EyeOutlined />
-                }
+                {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
               </button>
             </div>
           </>
@@ -112,9 +107,7 @@ export default function SignIn() {
         registerSection={
           <div className="link-text d-flex flex-column align-items-start">
             No Account?
-            <Link to="/register" className="register">
-              Sign up
-            </Link>
+            <Link to="/register" className="register">Sign up</Link>
           </div>
         }
       />
