@@ -8,7 +8,8 @@ export default function LoginForm({
   footerContent,
   action,
   onSubmit,
-  loading
+  loading,
+  tall = false,  
 }) {
   return (
     <form className="login-form" onSubmit={onSubmit}>

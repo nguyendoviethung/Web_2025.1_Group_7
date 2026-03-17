@@ -6,32 +6,43 @@ const authController = {
 
   // ─── REGISTER ─────────────────────────
   async register(req, res) {
-    try {
-      const {  email, password }  = req.body;
+  try {
+    const { full_name, student_id, email, password } = req.body;
 
-      const existingUser = await UserModel.findByEmail(email);
-      if (existingUser) {
-        return res.status(409).json({ message: 'Email already exists' });
-      }
-
-      const hashedPassword = await hash(password, 10);
-
-      const newUser = await UserModel.create({
-        email,
-        password: hashedPassword,
-        role: 'reader'
-      });
-
-      return res.status(201).json({
-        message: 'Register successful',
-        user: newUser
-      });
-
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Internal server error' });
+    // Kiểm tra email tồn tại
+    const existingUser = await UserModel.findByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email already exists' });
     }
-  },
+
+    // Verify email đúng format: tên + mssv + @datn.edu.vn
+    const expectedEmail = `${full_name.trim().toLowerCase().replace(/\s+/g, "")}${student_id.trim()}@datn.edu.vn`;
+    if (email !== expectedEmail) {
+      return res.status(400).json({
+        message: `Email must be: ${expectedEmail}`
+      });
+    }
+
+    const hashedPassword = await hash(password, 10);
+
+    const newUser = await UserModel.create({
+      full_name: full_name.trim(),
+      email,
+      password:  hashedPassword,
+      phone:     null,
+      role:      'reader',
+    });
+
+    return res.status(201).json({
+      message: 'Register successful',
+      user:    newUser,
+    });
+
+  } catch (err) {
+    console.error('Register error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+},
 
   // ─── LOGIN ─────────────────────────
   async login(req, res) {

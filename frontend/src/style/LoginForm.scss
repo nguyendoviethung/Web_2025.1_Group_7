@@ -66,4 +66,8 @@
       transform: translateY(0);
     }
   }
+    &--tall {
+    height: auto;        // ← tự động theo nội dung
+    min-height: 62rem;
+  }
 }
