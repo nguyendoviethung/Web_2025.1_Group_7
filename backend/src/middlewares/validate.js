@@ -24,14 +24,14 @@ const validateRegister = [
     .trim()
     .notEmpty()
     .withMessage('Student ID is required')
-    .matches(/^\d{8}$/)
-    .withMessage('Student ID must be 8 digits'),
+    .matches(/^\d+$/)               // chỉ cần là số, không giới hạn độ dài cứng
+    .withMessage('Student ID must contain only numbers'),
 
   body('email')
     .isEmail()
     .withMessage('Invalid email format')
-    .matches(/^[A-Za-z0-9._%+-]+@datn\.edu\.vn$/)
-    .withMessage('Email must end with @datn.edu.vn'),
+    .matches(/^[a-z0-9]+@datn\.edu\.vn$/)  // không dấu + số + @datn.edu.vn
+    .withMessage('Invalid email format'),
 
   body('password')
     .isLength({ min: 6 })

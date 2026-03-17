@@ -25,11 +25,22 @@ export default function Register() {
   const [showPassword,        setShowPassword]        = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading,             setLoading]             = useState(false);
+  
+  const removeAccents = (str) => {
+  return str
+    .normalize("NFD")                    // tách chữ và dấu
+    .replace(/[\u0300-\u036f]/g, "")     // xóa dấu
+    .replace(/đ/g, "d")                  // đ → d
+    .replace(/Đ/g, "D")                  // Đ → D
+    .toLowerCase()
+    .replace(/\s+/g, "")                 // xóa khoảng trắng
+    .replace(/[^a-z0-9]/g, "");          // xóa ký tự đặc biệt còn lại
+  };
 
-  const generatedEmail =
-    formData.full_name && formData.student_id
-      ? `${formData.full_name.trim().toLowerCase().replace(/\s+/g, "")}${formData.student_id.trim()}@datn.edu.vn`
-      : "";
+const generatedEmail =
+  formData.full_name && formData.student_id
+    ? `${removeAccents(formData.full_name)}${formData.student_id.trim()}@datn.edu.vn`
+    : "";
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -141,7 +152,7 @@ export default function Register() {
             </div>
 
             {/* ── Hàng 3: Password + Confirm Password ── */}
-            <div className="register-row register-row--password">
+      <div className="register-row register-row--password">
 
         {/* Password */}
         <div className="password-wrapper">
@@ -192,23 +203,23 @@ export default function Register() {
 
       </div>
 
-      {/* ── Thông báo khớp mật khẩu  */}
-      <span
-        className={`password-match ${isMatch ? "match" : "no-match"}`}
-        style={{ visibility: hasTyped ? "visible" : "hidden" }}
-      >
-        {isMatch ? "✓ Passwords match" : "✗ Passwords do not match"}
-      </span>
+         {/* ── Thông báo khớp mật khẩu  */}
+        <span
+          className={`password-match ${isMatch ? "match" : "no-match"}`}
+          style={{ visibility: hasTyped ? "visible" : "hidden" }}
+        >
+          {isMatch ? "✓ Passwords match" : "✗ Passwords do not match"}
+        </span>
 
           </>
         }
-        footerContent={
-          <div className="link-text d-flex flex-column align-items-start">
-            Have an Account?
-            <Link to="/" className="register">Sign in</Link>
-          </div>
-        }
-      />
+          footerContent={
+            <div className="link-text d-flex flex-column align-items-start">
+              Have an Account?
+              <Link to="/" className="register">Sign in</Link>
+            </div>
+          }
+        />
     </LoginBackground>
   );
 }
