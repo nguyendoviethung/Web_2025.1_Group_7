@@ -22,6 +22,7 @@
   }
 }
 
+// ─── Stat Cards ───────────────────────────────────────
 .stat-card {
   border-radius: 1.2rem;
   border: none;
@@ -53,7 +54,7 @@
 
   .stat-value {
     font-size: 2.4rem;
-font-weight: 700;
+    font-weight: 700;
     color: #262626;
     font-family: 'Nunito', sans-serif;
   }
@@ -70,49 +71,64 @@ font-weight: 700;
   }
 }
 
+// ─── Chart Cards ──────────────────────────────────────
 .chart-card {
   border-radius: 1.2rem;
   border: none;
   box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.06);
   position: relative;
 
-.pie-tooltip {  
-  background: rgba(44, 62, 80, 0.95);
-  padding: 1rem 1.4rem;
-  border-radius: 1rem;
-  color: #fff;
-  min-width: 8rem;
-  text-align: center;
+  .ant-card-head {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 0 2rem;
 
-  animation: tooltipFadeIn 0.25s ease forwards;
-  transform-origin: center bottom;
-}
-
-.tooltip-title {
-  font-family: 'Nunito', sans-serif;
-  font-size: 1.2rem;
-  font-weight: 500;
-  margin-bottom: 0.4rem;
-}
-
-.tooltip-value {
-  font-family: 'Nunito', sans-serif;
-  font-size: 1.6rem;
-  font-weight: 600;
-}
-
-@keyframes tooltipFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(0.6rem) scale(0.95);
+    .ant-card-head-title {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #262626;
+      font-family: 'Nunito', sans-serif;
+      padding: 1.6rem 0;
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+
+  .ant-card-body {
+    padding: 1.6rem 2rem;
   }
-}
 
+  .pie-tooltip {
+    background: rgba(44, 62, 80, 0.95);
+    padding: 1rem 1.4rem;
+    border-radius: 1rem;
+    color: #fff;
+    min-width: 8rem;
+    text-align: center;
+    animation: tooltipFadeIn 0.25s ease forwards;
+    transform-origin: center bottom;
+  }
 
+  .tooltip-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+
+  .tooltip-value {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+  }
+
+  @keyframes tooltipFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 
   .year-badge {
     position: absolute;
@@ -129,6 +145,42 @@ font-weight: 700;
   }
 }
 
+// ─── No Data ──────────────────────────────────────────
+.no-data {
+  height: 30rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #bfbfbf;
+  font-size: 1.4rem;
+  font-family: 'Nunito', sans-serif;
+}
+
+// ─── Custom Tooltip cho Category Bar Chart ────────────
+.custom-tooltip {
+  background: rgba(44, 62, 80, 0.95);
+  border-radius: 1rem;
+  padding: 1rem 1.4rem;
+  border: none;
+  text-align: center;
+
+  .tooltip-label {
+    color: #bdc3c7;
+    font-size: 1.2rem;
+    font-family: 'Nunito', sans-serif;
+    margin: 0 0 0.4rem 0;
+  }
+
+  .tooltip-value {
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    margin: 0;
+  }
+}
+
+// ─── Legend ───────────────────────────────────────────
 .legend {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -154,15 +206,33 @@ font-weight: 700;
   }
 }
 
+// ─── Top Books List ───────────────────────────────────
 .books-list {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.2rem;                     // ← giảm gap để fit 5 cuốn
+  max-height: 32rem;               // ← giới hạn chiều cao
+  overflow-y: auto;
+  padding-right: 0.4rem;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #d9d9d9;
+    border-radius: 4px;
+    &:hover { background: #bfbfbf; }
+  }
 
   .book-item {
     display: flex;
-    gap: 1.6rem;
-    padding: 1.6rem;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1rem 1.2rem;          // ← giảm padding
     background: #fafafa;
     border-radius: 1.2rem;
     transition: all 0.3s;
@@ -173,33 +243,56 @@ font-weight: 700;
     }
   }
 
+  // ─── Rank badge ─────────────────────────────────────
+  .book-rank {
+    font-size: 1.5rem;
+    font-weight: 700;
+    width: 2.8rem;
+    text-align: center;
+    flex-shrink: 0;
+    color: #d9d9d9;
+
+    &.rank-1 { color: #faad14; }   // vàng
+    &.rank-2 { color: #8c8c8c; }   // bạc
+    &.rank-3 { color: #ad6800; }   // đồng
+  }
+
   .book-cover {
-    width: 8rem;
-    height: 11rem;
-    border-radius: 0.8rem;
+    width: 5rem;                   // ← nhỏ hơn để fit
+    height: 7rem;
+    border-radius: 0.6rem;
     object-fit: cover;
+    flex-shrink: 0;
     box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.15);
   }
 
   .book-info {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
 
   .book-title {
-    font-size: 1.5rem;
-    font-weight: 500;
+    font-size: 1.4rem;
+    font-weight: 600;
     color: #262626;
-    margin-bottom: 0.8rem;
+    font-family: 'Nunito', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.4rem;
   }
 
   .book-loans {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     color: #8c8c8c;
+    font-family: 'Nunito', sans-serif;
   }
 }
 
+// ─── Responsive ───────────────────────────────────────
 @media (max-width: 768px) {
   .sidebar {
     width: 6rem;
@@ -209,9 +302,7 @@ font-weight: 700;
       font-size: 0.9rem;
       padding: 0.8rem 0.4rem;
 
-      .icon {
-        font-size: 1.8rem;
-      }
+      .icon { font-size: 1.8rem; }
     }
   }
 
@@ -222,5 +313,13 @@ font-weight: 700;
 
   .legend {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .books-list {
+    .book-cover {
+      width: 4rem;
+      height: 5.6rem;
+    }
+    .book-title { font-size: 1.3rem; }
   }
 }
