@@ -1,3 +1,5 @@
+// Middleware kiểm tra role của user
+
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {

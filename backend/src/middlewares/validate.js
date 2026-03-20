@@ -1,5 +1,6 @@
 import { body, validationResult } from 'express-validator';
 
+// Middleware kiểm tra dữ liệu đầu vào cho các route auth
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -14,6 +15,7 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
+// Validation rules cho route đăng ký (đảm bảo full_name, student_id, email, password hợp lệ)
 const validateRegister = [
   body('full_name')
     .trim()
@@ -40,6 +42,7 @@ const validateRegister = [
   handleValidationErrors,
 ];
 
+// Validation cho route đăng nhập
 const validateLogin = [
   body('email')
     .isEmail()

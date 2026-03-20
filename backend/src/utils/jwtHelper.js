@@ -18,12 +18,12 @@ const jwtHelper = {
     });
   },
 
-  // Verify access token
+  // Xác thực access token
   verifyAccessToken(token) {
     return verify(token, process.env.JWT_SECRET);
   },
 
-  // Verify refresh token
+  // Xác thực refresh token
   verifyRefreshToken(token) {
     return verify(token, process.env.JWT_REFRESH_SECRET);
   }

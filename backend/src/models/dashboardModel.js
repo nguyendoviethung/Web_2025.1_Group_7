@@ -14,7 +14,7 @@ const DashboardModel = {
     return result.rows[0];
   },
 
-  // ─── TOP BORROWED CATEGORIES ─────────────────────────
+  //  Top 8 thể loại được mượn nhiều nhất
 async getCategoryDistribution() {
   const result = await getPool().query(`
     SELECT
@@ -34,7 +34,7 @@ async getCategoryDistribution() {
     total_titles:  Number(r.total_titles),
   }));
 },
-  // ─── MONTHLY LOANS: lượt mượn theo tháng ────────────
+  // Lượt mượn theo tháng 
   async getMonthlyLoans() {
     const result = await getPool().query(`
       SELECT
@@ -52,7 +52,7 @@ async getCategoryDistribution() {
     }));
   },
 
-// ─── TOP BORROWED CATEGORIES ─────────────────────────
+// Top 8 người mượn nhiều nhất
 async getCategoryDistribution() {
   const result = await getPool().query(`
     SELECT
@@ -73,7 +73,7 @@ async getCategoryDistribution() {
   }));
 },
 
-  // ─── TOP ACTIVE READERS: người mượn nhiều nhất ──────
+  // Top 8 người mượn nhiều nhất
   async getTopReaders() {
     const result = await getPool().query(`
       SELECT
@@ -92,7 +92,7 @@ async getCategoryDistribution() {
     }));
   },
 
-  // ─── TOP BORROWED BOOKS: sách được mượn nhiều nhất ──
+  // Top 5 sách được mượn nhiều nhất
   async getTopBooks() {
     const result = await getPool().query(`
       SELECT

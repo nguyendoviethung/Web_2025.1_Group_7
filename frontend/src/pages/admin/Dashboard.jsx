@@ -6,10 +6,10 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell
 } from 'recharts';
-import axiosClient from '../../services/axiosClient.jsx';
+import dashboardService from '../../services/dashboardService';
 import '../../style/Dashboard.scss';
 
-// Màu sắc cho từng cột category
+// Màu sắc cho từng cột categimport dashboardService from '../../services/dashboardService';ory
 const CATEGORY_COLORS = [
   '#5399f3', '#52c41a', '#ff4d4f', '#faad14',
   '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16',
@@ -34,75 +34,38 @@ export default function Dashboard() {
     totalBooks: 0, totalReaders: 0, overdueBooks: 0, totalBorrowed: 0
   });
   const [monthlyData,   setMonthlyData]   = useState([]);
-  const [categoryData,  setCategoryData]  = useState([]); // ← đổi tên
+  const [categoryData,  setCategoryData]  = useState([]); 
   const [activeReaders, setActiveReaders] = useState([]);
   const [topBooks,      setTopBooks]      = useState([]);
 
   useEffect(() => { fetchDashboardData(); }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const [stats, monthly, category, age, top] = await Promise.all([
-        fetchStats(),
-        fetchMonthlyLoans(),
-        fetchCategoryDistribution(), // ← đổi tên
-        fetchAgeDistribution(),
-        fetchTopBooks(),
-      ]);
-      setStatsData(stats);
-      setMonthlyData(monthly);
-      setCategoryData(category); // ← đổi tên
-      setActiveReaders(age);
-      setTopBooks(top);
-    } catch (error) {
-      message.error('Failed to load dashboard data');
-      console.error('Dashboard error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const data = await axiosClient.get('/dashboard/stats');
-      return {
-        totalBooks:    data.totalBooks    || 0,
-        totalReaders:  data.totalReaders  || 0,
-        overdueBooks:  data.overdueBooks  || 0,
-        totalBorrowed: data.totalBorrowed || 0,
-      };
-    } catch { return { totalBooks: 0, totalReaders: 0, overdueBooks: 0, totalBorrowed: 0 }; }
-  };
-
-  const fetchMonthlyLoans = async () => {
-    try {
-      const data = await axiosClient.get('/dashboard/monthly-loans');
-      return data.monthlyLoans || [];
-    } catch { return []; }
-  };
-
-  // ← đổi endpoint
-  const fetchCategoryDistribution = async () => {
-    try {
-      const data = await axiosClient.get('/dashboard/category-distribution');
-      return data.categories || [];
-    } catch { return []; }
-  };
-
-  const fetchAgeDistribution = async () => {
-    try {
-      const data = await axiosClient.get('/dashboard/age-distribution');
-      return data.ageGroups || [];
-    } catch { return []; }
-  };
-
-  const fetchTopBooks = async () => {
-    try {
-      const data = await axiosClient.get('/dashboard/top-books');
-      return data.topBooks || [];
-    } catch { return []; }
-  };
+const fetchDashboardData = async () => {
+  try {
+    setLoading(true);
+    const [stats, monthly, category, age, top] = await Promise.all([
+      dashboardService.getStats(),
+      dashboardService.getMonthlyLoans(),
+      dashboardService.getCategoryDistribution(),
+      dashboardService.getAgeDistribution(),
+      dashboardService.getTopBooks(),
+    ]);
+    setStatsData({
+      totalBooks:    stats.totalBooks    || 0,
+      totalReaders:  stats.totalReaders  || 0,
+      overdueBooks:  stats.overdueBooks  || 0,
+      totalBorrowed: stats.totalBorrowed || 0,
+    });
+    setMonthlyData(monthly.monthlyLoans   || []);
+    setCategoryData(category.categories  || []);
+    setActiveReaders(age.ageGroups       || []);
+    setTopBooks(top.topBooks             || []);
+  } catch (error) {
+    message.error('Failed to load dashboard data,error: ' + (error.response?.data?.message || error.message));
+  } finally {
+    setLoading(false);
+  }
+};
 
   const statCards = [
     { title: 'Total Books',        value: `${statsData.totalBooks}+`,    icon: <BookOutlined />,        color: '#E6F4FF', iconColor: '#1890FF' },
@@ -168,7 +131,7 @@ export default function Dashboard() {
             </Card>
           </Col>
 
-          {/* ← Top Borrowed Categories (thay Overdue Trend) */}
+          {/* Top Borrowed Categories  */}
           <Col xs={24} lg={12}>
             <Card title="Top Borrowed Categories" className="chart-card">
               {categoryData.length > 0 ? (

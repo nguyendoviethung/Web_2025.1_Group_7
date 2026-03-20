@@ -1,14 +1,17 @@
-import React from "react";
 import { Select } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 
-export default function FilterComponent({ filterName, options }) {
+export default function Filter({ filterName, options = [], value, onChange }) {
   return (
     <Select
       placeholder={filterName}
-      style={{ width: 200 }}
+      style={{ width: 180 }}
       allowClear
-      suffixIcon={<FilterOutlined style={{ color: "#088ef5ff" , fontSize : "1.5rem"}} />} // 💡 Icon nằm trong Select
+      value={value || undefined}
+      onChange={(val) => onChange?.(val ?? "")}
+      suffixIcon={
+        <FilterOutlined style={{ color: "#088ef5ff", fontSize: "1.5rem" }} />
+      }
       options={options}
     />
   );

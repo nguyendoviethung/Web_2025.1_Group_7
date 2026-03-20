@@ -2,6 +2,7 @@ import { hash, compare } from 'bcryptjs';
 import UserModel from '../models/userModel.js';
 import jwtHelper from '../utils/jwtHelper.js';
 
+// Hàm loại bỏ dấu và ký tự đặc biệt, chuẩn hóa chuỗi
   const removeAccents = (str) => {
     return str
       .normalize("NFD")
@@ -15,7 +16,7 @@ import jwtHelper from '../utils/jwtHelper.js';
 
 const authController = {
 
-  // ─── REGISTER ─────────────────────────
+  // Đăng ký
 async register(req, res) {
     try {
       const { full_name, student_id, email, password } = req.body;
@@ -55,71 +56,57 @@ async register(req, res) {
     }
   },
 
-  // ─── LOGIN ─────────────────────────
+  // Đăng nhập
   async login(req, res) {
-    try {
-       const { email, password } = req.body;
-
-    // ─── DEBUG — xóa sau khi fix ───
-    console.log('─────────────────────────────');
-    console.log('BODY nhận được:', req.body);
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('─────────────────────────────');
+  try {
+    const { email, password } = req.body;
 
     const user = await UserModel.findByEmail(email);
-    console.log('User tìm được:', user ? `id=${user.id}, email=${user.email}, status=${user.status}` : 'KHÔNG TÌM THẤY');
-
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     if (user.status !== 'active') {
-      console.log('TÀI KHOẢN KHÔNG ACTIVE:', user.status);
       return res.status(403).json({ message: 'Account disabled' });
     }
 
-    console.log('Hash trong DB:', user.password);
     const isMatch = await compare(password, user.password);
-    console.log('Password khớp:', isMatch);
-
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-      const payload = { id: user.id, role: user.role };
+    const payload      = { id: user.id, role: user.role };
+    const accessToken  = jwtHelper.generateAccessToken(payload);
+    const refreshToken = jwtHelper.generateRefreshToken(payload);
 
-      const accessToken = jwtHelper.generateAccessToken(payload);
-      const refreshToken = jwtHelper.generateRefreshToken(payload);
+    await UserModel.saveRefreshToken(user.id, refreshToken);
 
-      await UserModel.saveRefreshToken(user.id, refreshToken);
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000,
+    });
 
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
+    return res.json({
+      message: 'Login successful',
+      accessToken,
+      user: {
+        id:         user.id,
+        full_name:  user.full_name,
+        email:      user.email,
+        role:       user.role,
+        avatar_url: user.avatar_url,
+      },
+    });
 
-      return res.json({
-        message: 'Login successful',
-        accessToken,
-        user: {
-          id: user.id,
-          full_name: user.full_name,
-          email: user.email,
-          role: user.role,
-          avatar_url: user.avatar_url
-        }
-      });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+},
 
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Internal server error' });
-    }
-  },
-
-  // ─── REFRESH TOKEN ─────────────────────────
+  // Làm mới access token bằng refresh token
   async refreshToken(req, res) {
     try {
       const token = req.cookies.refreshToken;
@@ -148,7 +135,7 @@ async register(req, res) {
     }
   },
 
-  // ─── LOGOUT ─────────────────────────
+  // Đăng xuất (xóa refresh token)
   async logout(req, res) {
     try {
       const token = req.cookies.refreshToken;
@@ -172,7 +159,7 @@ async register(req, res) {
     }
   },
 
-  // ─── GET CURRENT USER ─────────────────────────
+ //Lấy thông tin user hiện tại
   async getMe(req, res) {
     try {
       const user = await UserModel.findById(req.user.id);

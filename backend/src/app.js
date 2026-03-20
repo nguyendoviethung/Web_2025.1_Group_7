@@ -23,12 +23,12 @@ app.use(json());              // parse body JSON
 app.use(urlencoded({ extended: true })); // parse form data
 app.use(cookieParser());              // parse cookie
 
-// ─── LOGGING ────────────────────────────────────────────
+// Log request ra console khi dev
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev')); // log request ra console khi dev
 }
 
-// ─── HEALTH CHECK ───────────────────────────────────────
+// Kiểm tra server có chạy ổn không
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status:  'OK',
@@ -40,13 +40,11 @@ app.get('/api/health', (req, res) => {
 // ─── ROUTES ─────────────────────────────────────────────
 app.use('/api', routes);
 
-// ─── 404 HANDLER ────────────────────────────────────────
+// Nếu không khớp route nào ở trên, trả về 404
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.method} ${req.url} not found` });
 });
 
-// ─── GLOBAL ERROR HANDLER ───────────────────────────────
-// Phải để cuối cùng, sau tất cả routes
 app.use(errorHandler);
 
 export default app;
