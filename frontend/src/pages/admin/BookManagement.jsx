@@ -21,14 +21,14 @@ const STATUS_OPTIONS    = ["available", "borrowed", "lost", "damaged"];
 const PAGE_SIZE         = 8;
 
 const SORT_OPTIONS = [
-  { label: "Newest First",      sortBy: "created_at",      sortOrder: "DESC" },
-  { label: "Oldest First",      sortBy: "created_at",      sortOrder: "ASC"  },
-  { label: "Title A→Z",         sortBy: "title",           sortOrder: "ASC"  },
-  { label: "Title Z→A",         sortBy: "title",           sortOrder: "DESC" },
-  { label: "Author A→Z",        sortBy: "author",          sortOrder: "ASC"  },
-  { label: "Most Borrowed",     sortBy: "borrowed_all_time", sortOrder: "DESC" },
-  { label: "Qty High→Low",      sortBy: "quantity",        sortOrder: "DESC" },
-  { label: "Qty Low→High",      sortBy: "quantity",        sortOrder: "ASC"  },
+  { label: "Newest First",  sortBy: "created_at",       sortOrder: "DESC" },
+  { label: "Oldest First",  sortBy: "created_at",       sortOrder: "ASC"  },
+  { label: "Title A→Z",     sortBy: "title",            sortOrder: "ASC"  },
+  { label: "Title Z→A",     sortBy: "title",            sortOrder: "DESC" },
+  { label: "Author A→Z",    sortBy: "author",           sortOrder: "ASC"  },
+  { label: "Most Borrowed", sortBy: "borrowed_all_time", sortOrder: "DESC" },
+  { label: "Qty High→Low",  sortBy: "quantity",         sortOrder: "DESC" },
+  { label: "Qty Low→High",  sortBy: "quantity",         sortOrder: "ASC"  },
 ];
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -46,46 +46,45 @@ function AddBookModal({ onClose, onAdded }) {
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
-const handleSubmit = async () => {
-  // Trim toàn bộ string fields trước khi validate
-  const trimmed = {
-    ...form,
-    id:           form.id.trim(),
-    isbn:         form.isbn.trim(),
-    title:        form.title.trim(),
-    author:       form.author.trim(),
-    genre:        form.genre.trim(),
-    publisher:    form.publisher.trim(),
-    language:     form.language.trim(),
-    location:     form.location.trim(),
-    book_cover:   form.book_cover.trim(),
-    author_avatar: form.author_avatar.trim(),
-    description:  form.description.trim(),
+  const handleSubmit = async () => {
+    const trimmed = {
+      ...form,
+      id:            form.id.trim(),
+      isbn:          form.isbn.trim(),
+      title:         form.title.trim(),
+      author:        form.author.trim(),
+      genre:         form.genre.trim(),
+      publisher:     form.publisher.trim(),
+      language:      form.language.trim(),
+      location:      form.location.trim(),
+      book_cover:    form.book_cover.trim(),
+      author_avatar: form.author_avatar.trim(),
+      description:   form.description.trim(),
+    };
+
+    if (!trimmed.id || !trimmed.title) {
+      toast.warning("Book ID and Title are required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await bookService.create({
+        ...trimmed,
+        publish_year: trimmed.publish_year ? Number(trimmed.publish_year) : null,
+        pages:        trimmed.pages        ? Number(trimmed.pages)        : null,
+        quantity:     Number(trimmed.quantity),
+        available:    Number(trimmed.quantity),
+      });
+      toast.success("Book added successfully!");
+      onAdded();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || "Failed to add book");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  if (!trimmed.id || !trimmed.title) {
-    toast.warning("Book ID and Title are required");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    await bookService.create({
-      ...trimmed,
-      publish_year: trimmed.publish_year ? Number(trimmed.publish_year) : null,
-      pages:        trimmed.pages        ? Number(trimmed.pages)        : null,
-      quantity:     Number(trimmed.quantity),
-      available:    Number(trimmed.quantity),
-    });
-    toast.success("Book added successfully!");
-    onAdded();
-    onClose();
-  } catch (err) {
-    toast.error(err.message || "Failed to add book");
-  } finally {
-    setLoading(false);
-  }
-};
 
   return (
     <div className="bm-overlay" onClick={onClose}>
@@ -267,36 +266,36 @@ function EditModal({ book, onClose, onSaved }) {
   if (!book) return null;
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
-const handleSave = async () => {
-  const trimmed = {
-    ...form,
-    title:        form.title?.trim(),
-    author:       form.author?.trim()       || "",
-    genre:        form.genre?.trim()        || "",
-    publisher:    form.publisher?.trim()    || "",
-    language:     form.language?.trim()     || "",
-    location:     form.location?.trim()     || "",
-    book_cover:   form.book_cover?.trim()   || "",
-    description:  form.description?.trim()  || "",
+  const handleSave = async () => {
+    const trimmed = {
+      ...form,
+      title:       form.title?.trim(),
+      author:      form.author?.trim()      || "",
+      genre:       form.genre?.trim()       || "",
+      publisher:   form.publisher?.trim()   || "",
+      language:    form.language?.trim()    || "",
+      location:    form.location?.trim()    || "",
+      book_cover:  form.book_cover?.trim()  || "",
+      description: form.description?.trim() || "",
+    };
+
+    if (!trimmed.title) {
+      toast.warning("Title is required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await bookService.update(book.id, trimmed);
+      toast.success("Book updated successfully!");
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || "Failed to update book");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  if (!trimmed.title) {
-    toast.warning("Title is required");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    await bookService.update(book.id, trimmed);
-    toast.success("Book updated successfully!");
-    onSaved();
-    onClose();
-  } catch (err) {
-    toast.error(err.message || "Failed to update book");
-  } finally {
-    setLoading(false);
-  }
-};
 
   return (
     <div className="bm-overlay" onClick={onClose}>
@@ -472,8 +471,6 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
         <div className="bm-modal__body">
           <p className="copy-modal-book-name">Book: <strong>{book?.title}</strong></p>
           <div className="edit-form-grid">
-
-            {/* Số lượng */}
             <div className="form-group form-full">
               <label>
                 Number of Copies <span className="req">*</span>
@@ -501,7 +498,6 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
               </div>
             </div>
 
-            {/* Condition */}
             <div className="form-group form-full">
               <label>Condition</label>
               <select value={form.condition} onChange={e => set("condition", e.target.value)}>
@@ -513,7 +509,6 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
               </select>
             </div>
 
-            {/* Notes */}
             <div className="form-group form-full">
               <label>Notes <small>(optional)</small></label>
               <textarea rows={2} placeholder="e.g. New batch imported 2025"
@@ -521,7 +516,6 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
                         onChange={e => set("notes", e.target.value)} />
             </div>
 
-            {/* Barcode preview */}
             <div className="form-group form-full">
               <label>Barcode Preview</label>
               <div className="barcode-preview">
@@ -536,10 +530,8 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
                 )}
               </div>
             </div>
-
           </div>
 
-          {/* Summary */}
           <div className="copy-summary">
             <div className="copy-summary__item">
               <span>Will create</span>
@@ -559,13 +551,7 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
           <button className="bm-btn bm-btn--secondary" onClick={onClose}>Cancel</button>
           <button className="bm-btn bm-btn--primary"
                   disabled={form.quantity < 1}
-                  onClick={() => {
-                              onAdd({
-                                ...form,
-                                notes: form.notes.trim(),
-                              });
-                              onClose();
-                            }}>
+                  onClick={() => { onAdd({ ...form, notes: form.notes.trim() }); onClose(); }}>
             <PlusOutlined /> Add {form.quantity} {form.quantity > 1 ? "Copies" : "Copy"}
           </button>
         </div>
@@ -619,14 +605,7 @@ function EditCopyModalInner({ copy, onClose, onSave }) {
         <div className="bm-modal__footer">
           <button className="bm-btn bm-btn--secondary" onClick={onClose}>Cancel</button>
           <button className="bm-btn bm-btn--primary"
-                  onClick={() => {
-                              onSave({
-                                ...form,
-                                notes: form.notes?.trim() || "",
-                              });
-                                onClose();
-                                }}
-            >
+                  onClick={() => { onSave({ ...form, notes: form.notes?.trim() || "" }); onClose(); }}>
             <SaveOutlined /> Save
           </button>
         </div>
@@ -775,13 +754,11 @@ function ManageCopiesModal({ book, onClose }) {
                       <td>{copy.notes || <span className="text-muted">—</span>}</td>
                       <td className="copies-actions">
                         <button className="copies-action-btn copies-action-btn--edit"
-                                onClick={() => setEditCopy(copy)}
-                                title="Edit">
+                                onClick={() => setEditCopy(copy)} title="Edit">
                           <EditOutlined />
                         </button>
                         <button className="copies-action-btn copies-action-btn--del"
-                                onClick={() => handleDeleteCopy(copy.id)}
-                                title="Delete">
+                                onClick={() => handleDeleteCopy(copy.id)} title="Delete">
                           <DeleteOutlined />
                         </button>
                       </td>
@@ -800,8 +777,7 @@ function ManageCopiesModal({ book, onClose }) {
 
       {showAdd && (
         <AddCopyModalInner
-          book={book}
-          copies={copies}
+          book={book} copies={copies}
           onClose={() => setShowAdd(false)}
           onAdd={handleAddCopy}
         />
@@ -872,6 +848,13 @@ const BookManagement = () => {
   const [sortOrder,    setSortOrder]    = useState("DESC");
   const [genreOptions, setGenreOptions] = useState([]);
 
+  // ✅ Refs để tránh stale closure — luôn giữ giá trị mới nhất
+  const sortByRef    = useRef("created_at");
+  const sortOrderRef = useRef("DESC");
+  const searchRef    = useRef("");
+  const genreRef     = useRef("");
+  const pageRef      = useRef(1);
+
   const [viewBook,   setViewBook]   = useState(null);
   const [editBook,   setEditBook]   = useState(null);
   const [copiesBook, setCopiesBook] = useState(null);
@@ -888,7 +871,7 @@ const BookManagement = () => {
     } catch { /* không block UI */ }
   };
 
-  // ── Load sách ────────────────────────────────────────
+  // ── Load sách ─────────────────────────────────────────
   const loadBooks = useCallback(async (p, s, g, sb, so) => {
     try {
       setLoading(true);
@@ -916,54 +899,67 @@ const BookManagement = () => {
 
   // ── Search debounce 400ms ─────────────────────────────
   const handleSearch = (value) => {
-    const trimmed = value.trimStart(); 
+    const trimmed = value.trimStart();
     setSearch(trimmed);
+    searchRef.current = trimmed;       // ✅ sync ref
     setPage(1);
+    pageRef.current = 1;               // ✅ sync ref
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
-      loadBooks(1, trimmed.trim(), genre, sortBy, sortOrder); 
+      loadBooks(1, trimmed.trim(), genreRef.current, sortByRef.current, sortOrderRef.current);
     }, 400);
   };
+
   // ── Filter genre ──────────────────────────────────────
   const handleGenreChange = (value) => {
     setGenre(value);
+    genreRef.current = value;          // ✅ sync ref
     setPage(1);
-    loadBooks(1, search, value, sortBy, sortOrder);
+    pageRef.current = 1;               // ✅ sync ref
+    loadBooks(1, searchRef.current, value, sortByRef.current, sortOrderRef.current);
   };
 
   // ── Sort ──────────────────────────────────────────────
   const handleSortChange = (val) => {
     const [sb, so] = val.split("__");
-    setSortBy(sb);
-    setSortOrder(so);
-    setPage(1);
-    loadBooks(1, search, genre, sb, so);
+    setSortBy(sb);        sortByRef.current    = sb;   // ✅ sync ref
+    setSortOrder(so);     sortOrderRef.current = so;   // ✅ sync ref
+    setPage(1);           pageRef.current      = 1;    // ✅ sync ref
+    loadBooks(1, searchRef.current, genreRef.current, sb, so);
   };
 
   // ── Phân trang ────────────────────────────────────────
   const handlePageChange = (p) => {
     setPage(p);
-    loadBooks(p, search, genre, sortBy, sortOrder);
+    pageRef.current = p;               // ✅ sync ref
+    // ✅ dùng ref — không bị stale dù state chưa re-render
+    loadBooks(p, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
   };
 
   // ── Reset tất cả ──────────────────────────────────────
   const handleReset = () => {
-    setSearch("");
-    setGenre("");
-    setSortBy("created_at");
-    setSortOrder("DESC");
-    setPage(1);
+    setSearch("");        searchRef.current    = "";
+    setGenre("");         genreRef.current     = "";
+    setSortBy("created_at");   sortByRef.current    = "created_at";
+    setSortOrder("DESC");      sortOrderRef.current = "DESC";
+    setPage(1);                pageRef.current      = 1;
     loadBooks(1, "", "", "created_at", "DESC");
   };
 
-  const reload = () => loadBooks(page, search, genre, sortBy, sortOrder);
+  // ── Reload sau edit/add ───────────────────────────────
+  const reload = () =>
+    loadBooks(pageRef.current, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
 
+  // ── Reload sau delete ─────────────────────────────────
   const reloadAfterDelete = () => {
     const newTotal   = total - 1;
     const maxPage    = Math.max(1, Math.ceil(newTotal / PAGE_SIZE));
-    const targetPage = page > maxPage ? maxPage : page;
-    if (targetPage !== page) setPage(targetPage);
-    loadBooks(targetPage, search, genre, sortBy, sortOrder);
+    const targetPage = pageRef.current > maxPage ? maxPage : pageRef.current;
+    if (targetPage !== pageRef.current) {
+      setPage(targetPage);
+      pageRef.current = targetPage;
+    }
+    loadBooks(targetPage, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
   };
 
   const hasFilter = search || genre || sortBy !== "created_at" || sortOrder !== "DESC";

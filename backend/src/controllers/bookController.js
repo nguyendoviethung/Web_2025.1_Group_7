@@ -6,12 +6,22 @@ const bookController = {
   // Lấy danh sách sách với phân trang, tìm kiếm, lọc thể loại
   async getAll(req, res) {
     try {
-      const { search = '', genre = '', page = 1, limit = 10 } = req.query;
+      const {
+        search    = '',
+        genre     = '',
+        page      = 1,
+        limit     = 10,
+        sortBy    = 'created_at',   // ✅ thêm
+        sortOrder = 'DESC',         // ✅ thêm
+      } = req.query;
+
       const data = await BookModel.findAll({
         search,
         genre,
-        page:  Number(page),
-        limit: Number(limit),
+        page:      Number(page),
+        limit:     Number(limit),
+        sortBy,                     // ✅ truyền xuống model
+        sortOrder,                  // ✅ truyền xuống model
       });
       return res.json(data);
     } catch (err) {
@@ -69,7 +79,7 @@ const bookController = {
       return res.status(500).json({ message: 'Internal server error' });
     }
   },
-  
+
   // Xóa sách
   async delete(req, res) {
     try {
@@ -91,26 +101,26 @@ const bookController = {
   },
 
   // Thêm copy mới
-async addCopy(req, res) {
-  try {
-    const { quantity, condition, notes } = req.body;
-    const copies = await BookModel.addCopiesBulk({
-      book_id:  req.params.id,
-      quantity: quantity || 1,
-      condition,
-      notes,
-    });
-    return res.status(201).json({
-      message: `${copies.length} cop${copies.length > 1 ? 'ies' : 'y'} added successfully`,
-      copies,
-    });
-  } catch (err) {
-    console.error('addCopy error:', err);
-    if (err.code === '23505')
-      return res.status(409).json({ message: 'Barcode already exists' });
-    return res.status(500).json({ message: err.message || 'Internal server error' });
-  }
-},
+  async addCopy(req, res) {
+    try {
+      const { quantity, condition, notes } = req.body;
+      const copies = await BookModel.addCopiesBulk({
+        book_id:  req.params.id,
+        quantity: quantity || 1,
+        condition,
+        notes,
+      });
+      return res.status(201).json({
+        message: `${copies.length} cop${copies.length > 1 ? 'ies' : 'y'} added successfully`,
+        copies,
+      });
+    } catch (err) {
+      console.error('addCopy error:', err);
+      if (err.code === '23505')
+        return res.status(409).json({ message: 'Barcode already exists' });
+      return res.status(500).json({ message: err.message || 'Internal server error' });
+    }
+  },
 
   // Cập nhật copy
   async updateCopy(req, res) {
