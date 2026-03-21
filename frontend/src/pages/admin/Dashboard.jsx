@@ -181,26 +181,27 @@ const fetchDashboardData = async () => {
           <Col xs={24} lg={12}>
             <Card title="Top Readers" className="chart-card">
               {topReaders.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={topReaders} margin={{ bottom: 60 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11 }}
-                      angle={-20}
-                      textAnchor="end"
-                      height={70}
-                      interval={0}
-                    />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                      {topReaders.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={`hsl(${index * 40}, 70%, 60%)`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="books-list">
+                  {topReaders.map((reader, index) => (
+                    <div key={reader.id} className="book-item">
+                      <span className={`book-rank rank-${index + 1}`}>
+                        #{index + 1}
+                      </span>
+                      <img
+                        src={reader.avatar}
+                        alt={reader.name}
+                        className="book-cover reader-avatar"
+                        onError={(e) => {
+                          e.target.src = 'https://placehold.co/50x50?text=No+Avatar';
+                        }}
+                      />
+                      <div className="book-info">
+                        <div className="book-title">{reader.name}</div>
+                        <div className="book-loans">{reader.value} loans</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="no-data">No data available</div>
               )}

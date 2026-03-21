@@ -39,8 +39,7 @@ async getCategoryDistribution(req, res) {
     return res.status(500).json({ message: 'Internal server error' });
   }
 },
-  // GET /api/dashboard/age-distribution
-  // Frontend gọi endpoint này cho "Top Active Readers"
+  // GET /api/dashboard/top-readers
   async getTopReaders(req, res) {
     try {
       const topReaders = await DashboardModel.getTopReaders();

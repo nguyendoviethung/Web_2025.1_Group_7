@@ -77,21 +77,28 @@ async getCategoryDistribution() {
   async getTopReaders() {
     const result = await getPool().query(`
       SELECT
-        u.full_name               AS name,
-        COUNT(b.id)               AS value
+        u.id            AS id,
+        u.full_name     AS name,
+        u.avatar_url    AS avatar,
+        COUNT(b.id)     AS value
       FROM users u
       JOIN borrows b ON b.user_id = u.id
-      WHERE u.role = 'reader'
-      GROUP BY u.id, u.full_name
+      WHERE 
+        u.role = 'reader'
+        AND EXTRACT(YEAR FROM b.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+      GROUP BY u.id, u.full_name, u.avatar_url
       ORDER BY value DESC
-      LIMIT 8
+      LIMIT 5
     `);
+
     return result.rows.map(r => ({
-      name:  r.name,
-      value: Number(r.value),
+      id:     r.id,
+      name:   r.name,
+      avatar: r.avatar,
+      value:  Number(r.value),
     }));
   },
-
+  
   // Top 5 sách được mượn nhiều nhất
   async getTopBooks() {
     const result = await getPool().query(`
