@@ -1,7 +1,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-// Không tạo pool ngay — tạo lazily khi connect() được gọi
+//  Tạo lazily khi connect() được gọi
 let pool = null;
 
 const getPool = () => {

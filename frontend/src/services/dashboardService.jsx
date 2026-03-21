@@ -10,8 +10,8 @@ const dashboardService = {
   getCategoryDistribution() {
     return axiosClient.get('/dashboard/category-distribution');
   },
-  getAgeDistribution() {
-    return axiosClient.get('/dashboard/age-distribution');
+  getTopReaders() {
+    return axiosClient.get('/dashboard/top-readers');
   },
   getTopBooks() {
     return axiosClient.get('/dashboard/top-books');

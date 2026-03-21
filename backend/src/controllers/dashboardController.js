@@ -41,12 +41,12 @@ async getCategoryDistribution(req, res) {
 },
   // GET /api/dashboard/age-distribution
   // Frontend gọi endpoint này cho "Top Active Readers"
-  async getAgeDistribution(req, res) {
+  async getTopReaders(req, res) {
     try {
-      const ageGroups = await DashboardModel.getTopReaders();
-      return res.json({ ageGroups });
+      const topReaders = await DashboardModel.getTopReaders();
+      return res.json({ topReaders });
     } catch (err) {
-      console.error('getAgeDistribution error:', err);
+      console.error('getTopReaders error:', err);
       return res.status(500).json({ message: 'Internal server error' });
     }
   },

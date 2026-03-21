@@ -9,7 +9,7 @@ import {
 import dashboardService from '../../services/dashboardService';
 import '../../style/Dashboard.scss';
 
-// Màu sắc cho từng cột categimport dashboardService from '../../services/dashboardService';ory
+// Màu sắc cho các category
 const CATEGORY_COLORS = [
   '#5399f3', '#52c41a', '#ff4d4f', '#faad14',
   '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16',
@@ -35,7 +35,7 @@ export default function Dashboard() {
   });
   const [monthlyData,   setMonthlyData]   = useState([]);
   const [categoryData,  setCategoryData]  = useState([]); 
-  const [activeReaders, setActiveReaders] = useState([]);
+  const [topReaders, setTopReaders] = useState([]);
   const [topBooks,      setTopBooks]      = useState([]);
 
   useEffect(() => { fetchDashboardData(); }, []);
@@ -43,22 +43,28 @@ export default function Dashboard() {
 const fetchDashboardData = async () => {
   try {
     setLoading(true);
-    const [stats, monthly, category, age, top] = await Promise.all([
+
+    const [stats, monthly, category, readers, top] = await Promise.all([
       dashboardService.getStats(),
       dashboardService.getMonthlyLoans(),
       dashboardService.getCategoryDistribution(),
-      dashboardService.getAgeDistribution(),
+      dashboardService.getTopReaders(),      
       dashboardService.getTopBooks(),
     ]);
+
+
+    setTopReaders(readers.topReaders || []); 
+
     setStatsData({
       totalBooks:    stats.totalBooks    || 0,
       totalReaders:  stats.totalReaders  || 0,
       overdueBooks:  stats.overdueBooks  || 0,
       totalBorrowed: stats.totalBorrowed || 0,
     });
+    
+    setTopReaders(readers.topReaders || []); 
     setMonthlyData(monthly.monthlyLoans   || []);
     setCategoryData(category.categories  || []);
-    setActiveReaders(age.ageGroups       || []);
     setTopBooks(top.topBooks             || []);
   } catch (error) {
     message.error('Failed to load dashboard data,error: ' + (error.response?.data?.message || error.message));
@@ -173,10 +179,10 @@ const fetchDashboardData = async () => {
         <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
 
           <Col xs={24} lg={12}>
-            <Card title="Top Active Readers" className="chart-card">
-              {activeReaders.length > 0 ? (
+            <Card title="Top Readers" className="chart-card">
+              {topReaders.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={activeReaders} margin={{ bottom: 60 }}>
+                  <BarChart data={topReaders} margin={{ bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
                       dataKey="name"
@@ -189,7 +195,7 @@ const fetchDashboardData = async () => {
                     <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                      {activeReaders.map((_, index) => (
+                      {topReaders.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={`hsl(${index * 40}, 70%, 60%)`} />
                       ))}
                     </Bar>

@@ -10,8 +10,8 @@ router.use(authorize('staff'));
 
 router.get('/stats',                 dashboardController.getStats);
 router.get('/monthly-loans',         dashboardController.getMonthlyLoans);
-router.get('/category-distribution', dashboardController.getCategoryDistribution); // ← thêm
-router.get('/age-distribution',      dashboardController.getAgeDistribution);
+router.get('/category-distribution', dashboardController.getCategoryDistribution);
+router.get('/top-readers',      dashboardController.getTopReaders);
 router.get('/top-books',             dashboardController.getTopBooks);
 
 export default router;

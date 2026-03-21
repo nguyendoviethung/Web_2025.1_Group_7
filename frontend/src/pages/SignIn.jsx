@@ -5,12 +5,12 @@ import LoginForm from "../components/LoginForm";
 import LoginBackground from "../components/LoginBackground";
 import { InputField } from "../components/InputField";
 import { login } from "../services/authService";
-import { useToast } from "../components/Toast";  // ← đổi import
+import { useToast } from "../components/Toast";  
 import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
 
 export default function SignIn() {
   const navigate    = useNavigate();
-  const toast       = useToast();               // ← gọi hook
+  const toast       = useToast();               
   const passwordRef = useRef(null);
 
   const [formData, setFormData]         = useState({ email: "", password: "" });
@@ -28,9 +28,16 @@ export default function SignIn() {
     }
   };
 
+  const handlePasswordKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSignIn();
+    }
+  };
+
   const handleSignIn = async () => {
     if (!formData.email || !formData.password) {
-      toast.warning("Please enter email and password");  // ← toast.xxx
+      toast.warning("Please enter email and password");  
       return;
     }
 
@@ -85,6 +92,7 @@ export default function SignIn() {
                 value={formData.password}
                 onChange={handleChange}
                 inputRef={passwordRef}
+                onKeyDown={handlePasswordKeyDown}
               />
               <button
                 type="button"
