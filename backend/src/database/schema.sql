@@ -22,7 +22,7 @@ CREATE TABLE users (
     address         TEXT,
     role            VARCHAR(20)   NOT NULL CHECK (role   IN ('staff', 'reader')),
     status          VARCHAR(20)   NOT NULL DEFAULT 'active'
-                        CHECK (status IN ('active', 'disabled', 'banned')),
+                        CHECK (status IN ('active', 'suspended', 'banned')),
     refresh_token   TEXT,                                 -- lưu refresh token (NULL khi logout)
     created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP

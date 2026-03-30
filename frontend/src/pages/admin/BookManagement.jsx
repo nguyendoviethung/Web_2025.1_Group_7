@@ -31,9 +31,8 @@ const SORT_OPTIONS = [
   { label: "Qty Low→High",  sortBy: "quantity",         sortOrder: "ASC"  },
 ];
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: ADD BOOK
-// ════════════════════════════════════════════════════════════════════════════
+
 function AddBookModal({ onClose, onAdded }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -176,9 +175,8 @@ function AddBookModal({ onClose, onAdded }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: VIEW
-// ════════════════════════════════════════════════════════════════════════════
+
 function ViewModal({ book, onClose }) {
   if (!book) return null;
   return (
@@ -256,9 +254,8 @@ function ViewModal({ book, onClose }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: EDIT
-// ════════════════════════════════════════════════════════════════════════════
+
 function EditModal({ book, onClose, onSaved }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -376,9 +373,8 @@ function EditModal({ book, onClose, onSaved }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: DELETE
-// ════════════════════════════════════════════════════════════════════════════
+
 function DeleteModal({ book, onClose, onDeleted }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -435,9 +431,8 @@ function DeleteModal({ book, onClose, onDeleted }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: ADD COPY (bulk)
-// ════════════════════════════════════════════════════════════════════════════
+
 function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
   const [form, setForm] = useState({ quantity: 1, condition: "good", notes: "" });
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
@@ -560,9 +555,8 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: EDIT COPY
-// ════════════════════════════════════════════════════════════════════════════
+
 function EditCopyModalInner({ copy, onClose, onSave }) {
   const [form, setForm] = useState({ ...copy });
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
@@ -614,9 +608,8 @@ function EditCopyModalInner({ copy, onClose, onSave }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: MANAGE COPIES
-// ════════════════════════════════════════════════════════════════════════════
+
 function ManageCopiesModal({ book, onClose }) {
   const toast = useToast();
   const [copies,   setCopies]   = useState([]);
@@ -793,9 +786,8 @@ function ManageCopiesModal({ book, onClose }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Columns
-// ════════════════════════════════════════════════════════════════════════════
+
 const BOOK_COLUMNS = [
   { key: "id", label: "Book ID" },
   {
@@ -832,9 +824,9 @@ const BOOK_COLUMNS = [
   { key: "quantity", label: "Quantity", sortable: false, render: v => <strong>{v}</strong> },
 ];
 
-// ════════════════════════════════════════════════════════════════════════════
+
 // Main Page
-// ════════════════════════════════════════════════════════════════════════════
+
 const BookManagement = () => {
   const toast = useToast();
 
@@ -848,7 +840,7 @@ const BookManagement = () => {
   const [sortOrder,    setSortOrder]    = useState("DESC");
   const [genreOptions, setGenreOptions] = useState([]);
 
-  // ✅ Refs để tránh stale closure — luôn giữ giá trị mới nhất
+  //  Refs để tránh stale closure — luôn giữ giá trị mới nhất
   const sortByRef    = useRef("created_at");
   const sortOrderRef = useRef("DESC");
   const searchRef    = useRef("");
@@ -901,9 +893,9 @@ const BookManagement = () => {
   const handleSearch = (value) => {
     const trimmed = value.trimStart();
     setSearch(trimmed);
-    searchRef.current = trimmed;       // ✅ sync ref
+    searchRef.current = trimmed;      
     setPage(1);
-    pageRef.current = 1;               // ✅ sync ref
+    pageRef.current = 1;              
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
       loadBooks(1, trimmed.trim(), genreRef.current, sortByRef.current, sortOrderRef.current);
@@ -913,18 +905,20 @@ const BookManagement = () => {
   // ── Filter genre ──────────────────────────────────────
   const handleGenreChange = (value) => {
     setGenre(value);
-    genreRef.current = value;          // ✅ sync ref
+    genreRef.current = value;          
     setPage(1);
-    pageRef.current = 1;               // ✅ sync ref
+    pageRef.current = 1;              
     loadBooks(1, searchRef.current, value, sortByRef.current, sortOrderRef.current);
   };
 
   // ── Sort ──────────────────────────────────────────────
   const handleSortChange = (val) => {
     const [sb, so] = val.split("__");
-    setSortBy(sb);        sortByRef.current    = sb;   // ✅ sync ref
-    setSortOrder(so);     sortOrderRef.current = so;   // ✅ sync ref
-    setPage(1);           pageRef.current      = 1;    // ✅ sync ref
+    setSortBy(sb);        sortByRef.current    = sb;   
+    
+    setSortOrder(so);     sortOrderRef.current = so;  
+    
+    setPage(1);           pageRef.current      = 1;    
     loadBooks(1, searchRef.current, genreRef.current, sb, so);
   };
 
