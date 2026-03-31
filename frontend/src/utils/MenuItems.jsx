@@ -3,7 +3,6 @@
   BookOutlined,
   UserOutlined,
   MessageOutlined,
-  SettingOutlined,
   QrcodeOutlined,
 } from "@ant-design/icons";
   export const menuItemsAdmin = [
@@ -37,10 +36,5 @@
       label: "Messages",
       path: "/admin/messages",
     },
-    {
-      key: "settings",
-      icon: <SettingOutlined />,
-      label: "Settings",
-      path: "/admin/settings",
-    },
+
   ];
