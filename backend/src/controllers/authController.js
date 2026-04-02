@@ -18,43 +18,42 @@ const authController = {
 
   // Đăng ký
 async register(req, res) {
-    try {
-      const { full_name, student_id, email, password } = req.body;
+  try {
+    const { full_name, student_id, email, password } = req.body;
 
-      // Verify email backend tự tính lại để đảm bảo đúng
-      const expectedEmail = `${removeAccents(full_name)}${student_id.trim()}@datn.edu.vn`;
-
-      if (email !== expectedEmail) {
-        return res.status(400).json({
-          message: `Invalid email format. Expected: ${expectedEmail}`
-        });
-      }
-
-      const existingUser = await UserModel.findByEmail(email);
-      if (existingUser) {
-        return res.status(409).json({ message: 'Email already exists' });
-      }
-
-      const hashedPassword = await hash(password, 10);
-
-      const newUser = await UserModel.create({
-        full_name: full_name.trim(),
-        email,
-        password:  hashedPassword,
-        phone:     null,
-        role:      'reader',
+    const expectedEmail = `${removeAccents(full_name)}${student_id.trim()}@datn.edu.vn`;
+    if (email !== expectedEmail) {
+      return res.status(400).json({
+        message: `Invalid email format. Expected: ${expectedEmail}`
       });
-
-      return res.status(201).json({
-        message: 'Register successful',
-        user:    newUser,
-      });
-
-    } catch (err) {
-      console.error('Register error:', err);
-      return res.status(500).json({ message: 'Internal server error' });
     }
-  },
+
+    const existingUser = await UserModel.findByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+
+    const hashedPassword = await hash(password, 10);
+
+    const newUser = await UserModel.create({
+      full_name:  full_name.trim(),
+      student_id: student_id.trim(),   // ← thêm dòng này
+      email,
+      password:   hashedPassword,
+      phone:      null,
+      role:       'reader',
+    });
+
+    return res.status(201).json({
+      message: 'Register successful',
+      user:    newUser,
+    });
+
+  } catch (err) {
+    console.error('Register error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+},
 
   // Đăng nhập
   async login(req, res) {

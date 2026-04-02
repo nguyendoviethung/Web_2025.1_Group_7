@@ -22,14 +22,13 @@ const UserModel = {
   },
 
   // Tạo user mới
-  async create({ full_name, email, password, phone, role = 'reader' }) {
+  async create({ full_name, email, password, phone, role = 'reader', student_id }) {
     const result = await getPool().query(
-      `INSERT INTO users (full_name, email, password, phone, role, status)
-       VALUES ($1, $2, $3, $4, $5, 'active')
-       RETURNING id, full_name, email, role, status, phone, created_at`,
-      [full_name, email, password, phone, role]
+      `INSERT INTO users (full_name, email, password, phone, role, status, student_id)
+      VALUES ($1, $2, $3, $4, $5, 'active', $6)
+      RETURNING id, full_name, email, role, status, phone, student_id, created_at`,
+      [full_name, email, password, phone, role, student_id]
     );
-
     return result.rows[0];
   },
 
