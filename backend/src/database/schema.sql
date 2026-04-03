@@ -16,6 +16,7 @@ CREATE TABLE users (
     id              SERIAL        PRIMARY KEY,
     full_name       VARCHAR(100)  NOT NULL,
     email           VARCHAR(150)  NOT NULL UNIQUE,
+    student_id      VARCHAR(20)   UNIQUE,                   -- Mã số sinh viên (nếu là reader), NULL nếu là staff 
     password        VARCHAR(255)  NOT NULL,
     avatar_url      VARCHAR(255),
     phone           VARCHAR(20),

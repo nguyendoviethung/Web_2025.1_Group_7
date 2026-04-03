@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Spin, Select } from "antd";
 import {
-  EyeOutlined, CloseOutlined, PlusOutlined,
-  CheckCircleOutlined, ExclamationCircleOutlined,
-  BookOutlined, UserOutlined, CalendarOutlined,
-  SortAscendingOutlined, BarcodeOutlined,
+  EyeOutlined, CloseOutlined, CheckCircleOutlined,
+  UserOutlined, CalendarOutlined, BookOutlined,
+  SortAscendingOutlined, DeleteOutlined,
+  ScanOutlined, SwapOutlined, WarningOutlined,
+  ExclamationCircleOutlined, StopOutlined,
 } from "@ant-design/icons";
 import SearchBar        from "../../components/SearchBar";
 import Table            from "../../components/Table";
 import CustomPagination from "../../components/Pagination";
 import Filter           from "../../components/Filter";
+import QrScanner        from "../../components/QrScanner";
 import borrowService    from "../../services/borrowService";
 import { useToast }     from "../../components/Toast";
 import "../../style/BorrowManagement.scss";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE    = 8;
+const FINE_PER_DAY = 5000;
 
 const STATUS_FILTER = [
   { label: "Borrowing", value: "borrowing" },
@@ -51,35 +54,43 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
-
-const isOverdueDate = (row) =>
-  row.status === "overdue" || (row.status === "borrowing" && row.due_date && new Date(row.due_date) < new Date());
+const fmtDate  = (d) => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const fmtMoney = (n) => Number(n).toLocaleString("vi-VN") + " đ";
+const defaultDueDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toISOString().split("T")[0];
+};
 
 // ════════════════════════════════════════════════════════════════════════════
 // Modal: VIEW DETAIL
 // ════════════════════════════════════════════════════════════════════════════
 function ViewModal({ borrowId, onClose }) {
   const toast = useToast();
-  const [borrow,  setBorrow]  = useState(null);
+  const [borrow, setBorrow]   = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     borrowService.getById(borrowId)
       .then(res => setBorrow(res.borrow))
-      .catch(() => { toast.error("Failed to load borrow detail"); onClose(); })
+      .catch(() => { toast.error("Failed to load detail"); onClose(); })
       .finally(() => setLoading(false));
   }, [borrowId]);
 
   if (loading) return (
     <div className="bm-overlay">
-      <div className="bm-modal bm-modal--view" style={{ alignItems: "center", justifyContent: "center", minHeight: "30rem" }}>
+      <div className="bm-modal bm-modal--view" style={{ justifyContent: "center", alignItems: "center", minHeight: "30rem" }}>
         <Spin size="large" />
       </div>
     </div>
   );
   if (!borrow) return null;
+
+  const overdue = borrow.status === "overdue" ||
+    (borrow.status === "borrowing" && new Date(borrow.due_date) < new Date());
+  const overdueDays = (overdue && !borrow.return_date)
+    ? Math.max(0, Math.floor((Date.now() - new Date(borrow.due_date)) / 86400000))
+    : 0;
 
   return (
     <div className="bm-overlay" onClick={onClose}>
@@ -89,71 +100,61 @@ function ViewModal({ borrowId, onClose }) {
           <button className="bm-btn-close" onClick={onClose}><CloseOutlined /></button>
         </div>
         <div className="bm-modal__body">
-
-          {/* Status banner */}
-          <div className="bm-detail-banner">
-            <span className="bm-detail-id">#{borrow.id}</span>
+          <div className="bm-view-banner">
+            <span className="bm-view-id">#{borrow.id}</span>
             <StatusBadge status={borrow.status} />
           </div>
 
-          {/* Book info */}
-          <div className="bm-detail-section">
+          <div className="bm-view-section">
             <h4><BookOutlined /> Book</h4>
-            <div className="bm-detail-book">
-              <img
-                src={borrow.book_cover || "https://placehold.co/60x84?text=N/A"}
-                alt={borrow.book_title}
-                onError={e => { e.target.src = "https://placehold.co/60x84?text=N/A"; }}
-              />
+            <div className="bm-view-book">
+              <img src={borrow.book_cover || "https://placehold.co/56x80?text=N/A"} alt={borrow.book_title}
+                   onError={e => { e.target.src = "https://placehold.co/56x80?text=N/A"; }} />
               <div>
-                <div className="bm-detail-book-title">{borrow.book_title}</div>
-                <div className="bm-detail-book-author">{borrow.book_author}</div>
-                <code className="bm-barcode">{borrow.barcode}</code>
+                <div className="bm-view-book-title">{borrow.book_title}</div>
+                <div className="bm-view-sub">{borrow.book_author}</div>
+                <code className="bm-code">{borrow.barcode}</code>
               </div>
             </div>
           </div>
 
-          {/* Reader info */}
-          <div className="bm-detail-section">
+          <div className="bm-view-section">
             <h4><UserOutlined /> Reader</h4>
-            <div className="bm-detail-reader">
+            <div className="bm-view-reader">
               <img
                 src={borrow.reader_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${borrow.reader_name}`}
-                alt={borrow.reader_name}
-                className="bm-reader-avatar"
+                alt={borrow.reader_name} className="bm-view-avatar"
                 onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${borrow.reader_name}`; }}
               />
               <div>
-                <div className="bm-detail-reader-name">{borrow.reader_name}</div>
-                <div className="bm-detail-reader-email">{borrow.reader_email}</div>
-                {borrow.reader_phone && <div className="bm-detail-reader-phone">{borrow.reader_phone}</div>}
+                <div className="bm-view-reader-name">{borrow.reader_name}</div>
+                <div className="bm-view-sub">{borrow.reader_email}</div>
               </div>
             </div>
           </div>
 
-          {/* Dates */}
-          <div className="bm-detail-section">
+          <div className="bm-view-section">
             <h4><CalendarOutlined /> Dates</h4>
             <div className="bm-date-grid">
-              <div className="bm-date-item">
-                <label>Borrow Date</label>
-                <span>{fmtDate(borrow.borrow_date)}</span>
-              </div>
-              <div className="bm-date-item">
-                <label>Due Date</label>
-                <span style={{ color: isOverdueDate(borrow) ? "#ff4d4f" : "inherit" }}>
-                  {fmtDate(borrow.due_date)}
-                </span>
-              </div>
-              <div className="bm-date-item">
-                <label>Return Date</label>
-                <span style={{ color: borrow.return_date ? "#52c41a" : "#bfbfbf" }}>
-                  {fmtDate(borrow.return_date)}
-                </span>
-              </div>
+              {[
+                { label: "Borrow Date", value: fmtDate(borrow.borrow_date), color: "inherit"                         },
+                { label: "Due Date",    value: fmtDate(borrow.due_date),    color: overdue ? "#ff4d4f" : "inherit"   },
+                { label: "Return Date", value: fmtDate(borrow.return_date), color: borrow.return_date ? "#52c41a" : "#bfbfbf" },
+              ].map((item, i) => (
+                <div key={i} className="bm-date-item">
+                  <label>{item.label}</label>
+                  <span style={{ color: item.color }}>{item.value}</span>
+                </div>
+              ))}
             </div>
           </div>
 
+          {overdueDays > 0 && (
+            <div className="bm-overdue-notice">
+              <WarningOutlined />
+              <span>Overdue <strong>{overdueDays} days</strong> · Fine: <strong>{fmtMoney(overdueDays * FINE_PER_DAY)}</strong></span>
+            </div>
+          )}
         </div>
         <div className="bm-modal__footer">
           <button className="bm-btn bm-btn--secondary" onClick={onClose}>Close</button>
@@ -164,173 +165,524 @@ function ViewModal({ borrowId, onClose }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Modal: CREATE BORROW
+// Modal: BORROW
+// Step 1 — Quét QR thẻ SV → kiểm tra reader
+// Step 2 — Quét QR bìa sách → thêm từng cuốn vào danh sách
 // ════════════════════════════════════════════════════════════════════════════
-function CreateModal({ onClose, onCreated }) {
-  const toast = useToast();
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    user_id:  "",
-    barcode:  "",
-    due_date: "",
-  });
-  const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+const BORROW_STEP = { READER: "READER", BOOKS: "BOOKS" };
 
-  // Default due date: 14 ngày từ hôm nay
-  useEffect(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 14);
-    set("due_date", d.toISOString().split("T")[0]);
-  }, []);
+function BorrowModal({ onClose, onDone }) {
+  const toast = useToast();
+
+  const [step,        setStep]        = useState(BORROW_STEP.READER);
+  const [checking,    setChecking]    = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [readerInfo,  setReaderInfo]  = useState(null);
+  const [scannedBooks, setScannedBooks] = useState([]);
+  const [dueDate,     setDueDate]     = useState(defaultDueDate());
+
+  // Dùng ref để tránh stale closure trong QR callback
+  const stepRef        = useRef(BORROW_STEP.READER);
+  const checkingRef    = useRef(false);
+  const readerInfoRef  = useRef(null);
+  const scannedBooksRef = useRef([]);
+
+  // THÊM MỚI: Ref chống spam
+  const lastScannedRef = useRef(""); 
+  const mountTimeRef   = useRef(Date.now()); // Dùng để chặn quét ngay lúc vừa bật
+
+  useEffect(() => { stepRef.current        = step;        }, [step]);
+  useEffect(() => { checkingRef.current    = checking;    }, [checking]);
+  useEffect(() => { readerInfoRef.current  = readerInfo;  }, [readerInfo]);
+  useEffect(() => { scannedBooksRef.current = scannedBooks; }, [scannedBooks]);
+
+  // ── QR scanned ────────────────────────────────────
+const handleQrScan = useCallback(async (text) => {
+  if (checkingRef.current) return;
+  if (Date.now() - mountTimeRef.current < 1000) return;
+
+  // Chỉ chặn nếu mã GIỐNG HỆT và đang KHÔNG có lỗi (tức là lần trước thành công)
+  if (lastScannedRef.current === text) return;
+  lastScannedRef.current = text;
+
+  if (stepRef.current === BORROW_STEP.READER) {
+    setChecking(true);
+    try {
+      const info = await borrowService.checkReader(text);
+      setReaderInfo(info);
+      if (info.canBorrow) {
+        setStep(BORROW_STEP.BOOKS);
+        toast.success(`Reader verified: ${info.full_name}`);
+      }
+    } catch (err) {
+      toast.error(err.message || "Reader not found");
+      // Reset để cho phép quét lại mã này sau khi lỗi
+      lastScannedRef.current = "";
+    } finally {
+      setChecking(false);
+    }
+
+  } else if (stepRef.current === BORROW_STEP.BOOKS) {
+    const barcode = text.toUpperCase();
+    if (scannedBooksRef.current.find(b => b.barcode === barcode)) {
+      toast.warning("Already scanned this book");
+      return;
+    }
+    const info      = readerInfoRef.current;
+    const remaining = info.maxBorrowLimit - info.currentBorrowing - scannedBooksRef.current.length;
+    if (remaining <= 0) {
+      toast.warning("Borrow limit reached");
+      return;
+    }
+    setChecking(true);
+    try {
+      const copy = await borrowService.checkBarcode(barcode);
+      setScannedBooks(prev => [...prev, copy]);
+      toast.success(`Added: ${copy.book_title}`);
+    } catch (err) {
+      toast.error(err.message || "Invalid barcode or book not available");
+      // Reset để cho phép quét lại
+      lastScannedRef.current = "";
+    } finally {
+      setChecking(false);
+    }
+  }
+}, [toast]);
+  const removeBook = (barcode) =>
+    setScannedBooks(prev => prev.filter(b => b.barcode !== barcode));
+
+  const handleReset = () => {
+    setStep(BORROW_STEP.READER);
+    setReaderInfo(null);
+    setScannedBooks([]);
+    setDueDate(defaultDueDate());
+    lastScannedRef.current = ""; // Reset lại mã đã lưu để có thể quét lại
+  };
 
   const handleSubmit = async () => {
-    if (!form.user_id.trim() || !form.barcode.trim() || !form.due_date) {
-      toast.warning("All fields are required");
-      return;
-    }
-    if (new Date(form.due_date) <= new Date()) {
-      toast.warning("Due date must be in the future");
-      return;
-    }
+    if (!scannedBooks.length) { toast.warning("No books scanned"); return; }
     try {
-      setLoading(true);
-      await borrowService.create({
-        user_id:  form.user_id.trim(),
-        barcode:  form.barcode.trim(),
-        due_date: form.due_date,
+      setSubmitting(true);
+      await borrowService.createBatch({
+        user_id:  readerInfo.id,
+        due_date: dueDate,
+        items:    scannedBooks.map(b => ({ book_copy_id: b.id, book_id: b.book_id })),
       });
-      toast.success("Book borrowed successfully!");
-      onCreated();
+      toast.success(`${scannedBooks.length} book(s) borrowed successfully!`);
+      onDone();
       onClose();
     } catch (err) {
-      toast.error(err.message || "Failed to create borrow");
+      toast.error(err.message || "Failed to borrow");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  const remaining = readerInfo
+    ? readerInfo.maxBorrowLimit - readerInfo.currentBorrowing - scannedBooks.length
+    : 0;
+
   return (
     <div className="bm-overlay" onClick={onClose}>
-      <div className="bm-modal bm-modal--create" onClick={e => e.stopPropagation()}>
+      <div className="bm-modal bm-modal--scanner" onClick={e => e.stopPropagation()}>
+
         <div className="bm-modal__header">
-          <div className="bm-modal__title"><PlusOutlined /><span>New Borrow</span></div>
+          <div className="bm-modal__title"><ScanOutlined /><span>Borrow Books</span></div>
           <button className="bm-btn-close" onClick={onClose}><CloseOutlined /></button>
         </div>
-        <div className="bm-modal__body">
-          <div className="bm-form-grid">
 
-            <div className="bm-form-group">
-              <label>Reader ID <span className="bm-req">*</span></label>
-              <div className="bm-input-wrap">
-                <UserOutlined />
-                <input
-                  placeholder="e.g. 29"
-                  value={form.user_id}
-                  onChange={e => set("user_id", e.target.value)}
-                />
-              </div>
-              <small>Enter the reader's account ID</small>
-            </div>
-
-            <div className="bm-form-group">
-              <label>Book Copy Barcode <span className="bm-req">*</span></label>
-              <div className="bm-input-wrap">
-                <BarcodeOutlined />
-                <input
-                  placeholder="e.g. BK001-001"
-                  value={form.barcode}
-                  onChange={e => set("barcode", e.target.value.toUpperCase())}
-                />
-              </div>
-              <small>Enter the barcode printed on the book copy</small>
-            </div>
-
-            <div className="bm-form-group bm-form-full">
-              <label>Due Date <span className="bm-req">*</span></label>
-              <input
-                type="date"
-                className="bm-date-input"
-                value={form.due_date}
-                min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-                onChange={e => set("due_date", e.target.value)}
-              />
-            </div>
-
+        {/* Progress */}
+        <div className="bm-steps">
+          <div className={`bm-step ${step === BORROW_STEP.READER ? "bm-step--active" : "bm-step--done"}`}>
+            <span className="bm-step-dot">1</span> Scan Student Card
+          </div>
+          <div className="bm-step-arrow">→</div>
+          <div className={`bm-step ${step === BORROW_STEP.BOOKS ? "bm-step--active" : ""}`}>
+            <span className="bm-step-dot">2</span> Scan Books
           </div>
         </div>
+
+        <div className="bm-modal__body">
+
+          {/* ═══ STEP 1 ═══════════════════════════════════ */}
+          {step === BORROW_STEP.READER && (
+            <div className="bm-scanner-layout">
+
+              {/* Camera */}
+              <div className="bm-camera-col">
+                <div className="bm-camera-label">
+                  <UserOutlined /> Point camera at Student ID card
+                </div>
+                <QrScanner
+                  onScan={handleQrScan}
+                  active={step === BORROW_STEP.READER && !checking}
+                />
+                {checking && (
+                  <div className="bm-checking-overlay">
+                    <Spin /> Verifying...
+                  </div>
+                )}
+              </div>
+
+              {/* Reader result */}
+              <div className="bm-result-col">
+                {!readerInfo ? (
+                  <div className="bm-scan-waiting">
+                    <UserOutlined />
+                    <p>Waiting for QR scan...</p>
+                    <small>Scan the QR code on the student card</small>
+                  </div>
+                ) : (
+                  <div className={`bm-reader-card ${readerInfo.canBorrow ? "bm-reader-card--ok" : "bm-reader-card--fail"}`}>
+                    <div className="bm-reader-card-hero">
+                      <img
+                        src={readerInfo.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${readerInfo.full_name}`}
+                        alt={readerInfo.full_name}
+                        onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${readerInfo.full_name}`; }}
+                      />
+                      <div>
+                        <div className="bm-reader-card-name">{readerInfo.full_name}</div>
+                        <div className="bm-reader-card-email">{readerInfo.email}</div>
+                        <div className="bm-reader-card-stats">
+                          Borrowing: <strong>{readerInfo.currentBorrowing}/{readerInfo.maxBorrowLimit}</strong>
+                          {readerInfo.overdueCount > 0 && (
+                            <span className="bm-badge-danger">{readerInfo.overdueCount} overdue</span>
+                          )}
+                          {readerInfo.totalFine > 0 && (
+                            <span className="bm-badge-danger">{fmtMoney(readerInfo.totalFine)} fine</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {readerInfo.canBorrow ? (
+                      <div className="bm-reader-ok">
+                        <CheckCircleOutlined /> Eligible · {readerInfo.maxBorrowLimit - readerInfo.currentBorrowing} slot(s) left
+                      </div>
+                    ) : (
+                      <div className="bm-reader-fail">
+                        <ExclamationCircleOutlined /> Not eligible:
+                        <ul>{readerInfo.violations.map((v, i) => <li key={i}>{v}</li>)}</ul>
+                      </div>
+                    )}
+
+                    <div className="bm-card-actions">
+                      <button className="bm-btn bm-btn--ghost bm-btn--sm" onClick={() => {
+                        setReaderInfo(null);
+                        lastScannedRef.current = ""; // Reset allow re-scan
+                      }}>
+                        Scan Again
+                      </button>
+                      {readerInfo.canBorrow && (
+                        <button className="bm-btn bm-btn--primary bm-btn--sm" onClick={() => setStep(BORROW_STEP.BOOKS)}>
+                          Continue →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ STEP 2 ═══════════════════════════════════ */}
+          {step === BORROW_STEP.BOOKS && (
+            <div className="bm-scanner-layout">
+
+              {/* Camera */}
+              <div className="bm-camera-col">
+                {/* Reader mini card */}
+                <div className="bm-reader-mini">
+                  <img
+                    src={readerInfo.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${readerInfo.full_name}`}
+                    alt={readerInfo.full_name}
+                    onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${readerInfo.full_name}`; }}
+                  />
+                  <div>
+                    <div className="bm-reader-mini-name">{readerInfo.full_name}</div>
+                    <div className="bm-reader-mini-sub">
+                      {remaining > 0 ? `${remaining} slot(s) remaining` : <span style={{ color: "#ff4d4f" }}>Limit reached</span>}
+                    </div>
+                  </div>
+                  <button className="bm-btn bm-btn--ghost bm-btn--xs" onClick={() => {
+                      setReaderInfo(null);
+                      lastScannedRef.current = "";
+                      mountTimeRef.current   = Date.now(); // Cho camera 1s "nghỉ" rồi mới nhận QR mới
+                    }}>
+                      Change
+                  </button>
+                </div>
+
+                <div className="bm-camera-label">
+                  <BookOutlined /> Scan book barcode / QR
+                </div>
+
+                {remaining > 0 ? (
+                  <>
+                    <QrScanner
+                      onScan={handleQrScan}
+                      active={step === BORROW_STEP.BOOKS && !checking && remaining > 0}
+                    />
+                    {checking && (
+                      <div className="bm-checking-overlay">
+                        <Spin /> Checking book...
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="bm-scan-waiting bm-scan-waiting--warn">
+                    <StopOutlined />
+                    <p>Limit reached</p>
+                    <small>Submit or remove a book first</small>
+                  </div>
+                )}
+
+                {/* Due date */}
+                <div className="bm-due-row">
+                  <label>Due Date</label>
+                  <input
+                    type="date"
+                    className="bm-date-input"
+                    value={dueDate}
+                    min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                    onChange={e => setDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Books list */}
+              <div className="bm-result-col">
+                <div className="bm-result-title">
+                  Scanned Books <span className="bm-count-badge">{scannedBooks.length}</span>
+                </div>
+
+                {scannedBooks.length === 0 ? (
+                  <div className="bm-scan-waiting">
+                    <BookOutlined />
+                    <p>No books yet</p>
+                    <small>Point camera at book barcode or QR</small>
+                  </div>
+                ) : (
+                  <div className="bm-scanned-list">
+                    {scannedBooks.map((book, idx) => (
+                      <div key={book.barcode} className="bm-scanned-item">
+                        <span className="bm-scanned-num">{idx + 1}</span>
+                        <img
+                          src={book.book_cover || "https://placehold.co/32x44?text=N/A"}
+                          alt={book.book_title}
+                          onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }}
+                        />
+                        <div className="bm-scanned-info">
+                          <div className="bm-scanned-title">{book.book_title}</div>
+                          <div className="bm-scanned-author">{book.book_author}</div>
+                          <code className="bm-code-sm">{book.barcode}</code>
+                        </div>
+                        <button className="bm-remove-btn" onClick={() => removeBook(book.barcode)}>
+                          <DeleteOutlined />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="bm-modal__footer">
-          <button className="bm-btn bm-btn--secondary" onClick={onClose}>Cancel</button>
-          <button className="bm-btn bm-btn--primary" onClick={handleSubmit} disabled={loading}>
-            {loading ? <Spin size="small" /> : <><CheckCircleOutlined /> Confirm Borrow</>}
+          <button className="bm-btn bm-btn--secondary" onClick={step === BORROW_STEP.READER ? onClose : handleReset}>
+            {step === BORROW_STEP.READER ? "Cancel" : "Reset"}
           </button>
+          {step === BORROW_STEP.BOOKS && (
+            <button
+              className="bm-btn bm-btn--primary"
+              onClick={handleSubmit}
+              disabled={submitting || scannedBooks.length === 0}
+            >
+              {submitting ? <Spin size="small" /> : <><CheckCircleOutlined /> Confirm Borrow ({scannedBooks.length})</>}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
 // ════════════════════════════════════════════════════════════════════════════
-// Modal: RETURN BOOK
+// Modal: RETURN
+// Quét từng barcode sách → hiện thông tin → submit tất cả
 // ════════════════════════════════════════════════════════════════════════════
-function ReturnModal({ borrow, onClose, onReturned }) {
+function ReturnModal({ onClose, onDone }) {
   const toast = useToast();
-  const [loading, setLoading] = useState(false);
+  const [checking,    setChecking]    = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [scannedItems, setScannedItems] = useState([]);
 
-  const handleReturn = async () => {
+  const checkingRef     = useRef(false);
+  const scannedItemsRef = useRef([]);
+
+  // THÊM MỚI: Ref chống spam cho ReturnModal
+  const lastScannedRef = useRef("");
+  const mountTimeRef   = useRef(Date.now());
+
+  useEffect(() => { checkingRef.current    = checking;    }, [checking]);
+  useEffect(() => { scannedItemsRef.current = scannedItems; }, [scannedItems]);
+
+  const handleQrScan = useCallback(async (text) => {
+    if (checkingRef.current) return;
+
+    // 1. Chặn quét 1 giây đầu tiên khi vừa mở camera
+    if (Date.now() - mountTimeRef.current < 1000) return;
+
+    // 2. Chống spam tuyệt đối: Không xử lý nếu mã giống hệt mã vừa quét
+    if (lastScannedRef.current === text) return;
+    
+    lastScannedRef.current = text;
+
+    const barcode = text.toUpperCase();
+
+    if (scannedItemsRef.current.find(i => i.barcode === barcode)) {
+      toast.warning("Already in return list");
+      return;
+    }
+
+    setChecking(true);
     try {
-      setLoading(true);
-      await borrowService.returnBook(borrow.id);
-      toast.success("Book returned successfully!");
-      onReturned();
+      const info = await borrowService.checkReturnBarcode(barcode);
+      setScannedItems(prev => [...prev, info]);
+
+      if (info.fine_amount > 0) {
+        toast.warning(`${info.book_title} — ${info.overdue_days} day(s) overdue · Fine: ${fmtMoney(info.fine_amount)}`);
+      } else {
+        toast.success(`Added: ${info.book_title}`);
+      }
+    } catch (err) {
+      toast.error(err.message || "Book not found or not borrowed");
+    } finally {
+      setChecking(false);
+    }
+  }, [toast]);
+
+  const removeItem = (barcode) =>
+    setScannedItems(prev => prev.filter(i => i.barcode !== barcode));
+
+  const totalFine = scannedItems.reduce((s, i) => s + (i.fine_amount || 0), 0);
+
+  const handleSubmit = async () => {
+    if (!scannedItems.length) { toast.warning("No books scanned"); return; }
+    try {
+      setSubmitting(true);
+      await borrowService.returnBatch(scannedItems.map(i => i.borrow_id));
+      toast.success(`${scannedItems.length} book(s) returned!`);
+      onDone();
       onClose();
     } catch (err) {
       toast.error(err.message || "Failed to process return");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const isOverdue = borrow.status === "overdue" ||
-    (borrow.status === "borrowing" && new Date(borrow.due_date) < new Date());
-
   return (
     <div className="bm-overlay" onClick={onClose}>
-      <div className="bm-modal bm-modal--sm" onClick={e => e.stopPropagation()}>
+      <div className="bm-modal bm-modal--scanner" onClick={e => e.stopPropagation()}>
         <div className="bm-modal__header">
           <div className="bm-modal__title" style={{ color: "#389e0d" }}>
-            <CheckCircleOutlined /><span>Return Book</span>
+            <SwapOutlined /><span>Return Books</span>
           </div>
           <button className="bm-btn-close" onClick={onClose}><CloseOutlined /></button>
         </div>
-        <div className="bm-modal__body bm-confirm-body">
-          <div className="bm-confirm-icon" style={{ background: "#f6ffed" }}>
-            <CheckCircleOutlined style={{ color: "#52c41a" }} />
-          </div>
-          <h3>Confirm book return?</h3>
-          <p>
-            <strong>{borrow.book_title}</strong>
-            <br />
-            <span style={{ color: "#8c8c8c", fontSize: "1.3rem" }}>
-              Borrowed by <strong>{borrow.reader_name}</strong> · {borrow.barcode}
-            </span>
-          </p>
-          {isOverdue && (
-            <div className="bm-return-warning">
-              ⚠️ This book is <strong>overdue</strong>. Please handle any late fees before confirming.
+
+        <div className="bm-modal__body">
+          <div className="bm-scanner-layout">
+
+            {/* Camera */}
+            <div className="bm-camera-col">
+              <div className="bm-camera-label">
+                <BookOutlined /> Scan book barcode / QR
+              </div>
+              <QrScanner onScan={handleQrScan} active={!checking} />
+              {checking && (
+                <div className="bm-checking-overlay">
+                  <Spin /> Looking up...
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Return list */}
+            <div className="bm-result-col">
+              <div className="bm-result-title">
+                Books to Return <span className="bm-count-badge">{scannedItems.length}</span>
+              </div>
+
+              {scannedItems.length === 0 ? (
+                <div className="bm-scan-waiting">
+                  <SwapOutlined />
+                  <p>No books yet</p>
+                  <small>Scan the barcode on each book cover</small>
+                </div>
+              ) : (
+                <>
+                  <div className="bm-scanned-list">
+                    {scannedItems.map((item, idx) => (
+                      <div
+                        key={item.barcode}
+                        className={`bm-scanned-item ${item.fine_amount > 0 ? "bm-scanned-item--overdue" : ""}`}
+                      >
+                        <span className="bm-scanned-num">{idx + 1}</span>
+                        <img
+                          src={item.book_cover || "https://placehold.co/32x44?text=N/A"}
+                          alt={item.book_title}
+                          onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }}
+                        />
+                        <div className="bm-scanned-info">
+                          <div className="bm-scanned-title">{item.book_title}</div>
+                          <div className="bm-scanned-meta">
+                            <span className="bm-meta-reader">{item.reader_name}</span>
+                            <span className="bm-meta-dot">·</span>
+                            <span className="bm-meta-date">Due {fmtDate(item.due_date)}</span>
+                          </div>
+                          {item.fine_amount > 0 && (
+                            <div className="bm-fine-tag">
+                              ⚠ {item.overdue_days}d · {fmtMoney(item.fine_amount)}
+                            </div>
+                          )}
+                        </div>
+                        <button className="bm-remove-btn" onClick={() => removeItem(item.barcode)}>
+                          <DeleteOutlined />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {totalFine > 0 && (
+                    <div className="bm-fine-summary">
+                      <WarningOutlined />
+                      <div>
+                        Collect fine: <strong>{fmtMoney(totalFine)}</strong>
+                        <small>Please collect before confirming</small>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
+
         <div className="bm-modal__footer">
           <button className="bm-btn bm-btn--secondary" onClick={onClose}>Cancel</button>
-          <button className="bm-btn bm-btn--success" onClick={handleReturn} disabled={loading}>
-            {loading ? <Spin size="small" /> : "Confirm Return"}
+          <button
+            className="bm-btn bm-btn--success"
+            onClick={handleSubmit}
+            disabled={submitting || scannedItems.length === 0}
+          >
+            {submitting ? <Spin size="small" /> : <><CheckCircleOutlined /> Confirm Return ({scannedItems.length})</>}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
 // ════════════════════════════════════════════════════════════════════════════
 // Main Page
 // ════════════════════════════════════════════════════════════════════════════
@@ -346,7 +698,6 @@ const BorrowManagement = () => {
   const [sortBy,    setSortBy]    = useState("borrow_date");
   const [sortOrder, setSortOrder] = useState("DESC");
 
-  // Refs — tránh stale closure
   const sortByRef    = useRef("borrow_date");
   const sortOrderRef = useRef("DESC");
   const searchRef    = useRef("");
@@ -354,24 +705,18 @@ const BorrowManagement = () => {
   const pageRef      = useRef(1);
   const searchTimer  = useRef(null);
 
-  // Modals
-  const [viewId,       setViewId]       = useState(null);
-  const [createOpen,   setCreateOpen]   = useState(false);
-  const [returnBorrow, setReturnBorrow] = useState(null);
+  const [viewId,     setViewId]     = useState(null);
+  const [borrowOpen, setBorrowOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
 
-  // ── Load ──────────────────────────────────────────
   const loadBorrows = useCallback(async (p, s, st, sb, so) => {
     try {
       setLoading(true);
-      const res = await borrowService.getAll({
-        page: p, limit: PAGE_SIZE,
-        search: s, status: st,
-        sortBy: sb, sortOrder: so,
-      });
+      const res = await borrowService.getAll({ page: p, limit: PAGE_SIZE, search: s, status: st, sortBy: sb, sortOrder: so });
       setBorrows(res.borrows || []);
       setTotal(res.total    || 0);
     } catch {
-      toast.error("Failed to load borrow records");
+      toast.error("Failed to load records");
     } finally {
       setLoading(false);
     }
@@ -379,41 +724,40 @@ const BorrowManagement = () => {
 
   useEffect(() => { loadBorrows(1, "", "", "borrow_date", "DESC"); }, []);
 
-  // ── Handlers ──────────────────────────────────────
   const handleSearch = (value) => {
     const v = value.trimStart();
-    setSearch(v);          searchRef.current = v;
-    setPage(1);            pageRef.current   = 1;
+    setSearch(v); searchRef.current = v;
+    setPage(1);   pageRef.current   = 1;
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() =>
       loadBorrows(1, v.trim(), statusRef.current, sortByRef.current, sortOrderRef.current), 400);
   };
 
   const handleStatusFilter = (value) => {
-    setStatus(value);      statusRef.current = value;
-    setPage(1);            pageRef.current   = 1;
+    setStatus(value); statusRef.current = value;
+    setPage(1);       pageRef.current   = 1;
     loadBorrows(1, searchRef.current, value, sortByRef.current, sortOrderRef.current);
   };
 
   const handleSortChange = (val) => {
     const [sb, so] = val.split("__");
-    setSortBy(sb);         sortByRef.current    = sb;
-    setSortOrder(so);      sortOrderRef.current = so;
-    setPage(1);            pageRef.current      = 1;
+    setSortBy(sb);    sortByRef.current    = sb;
+    setSortOrder(so); sortOrderRef.current = so;
+    setPage(1);       pageRef.current      = 1;
     loadBorrows(1, searchRef.current, statusRef.current, sb, so);
   };
 
   const handlePageChange = (p) => {
-    setPage(p);            pageRef.current = p;
+    setPage(p); pageRef.current = p;
     loadBorrows(p, searchRef.current, statusRef.current, sortByRef.current, sortOrderRef.current);
   };
 
   const handleReset = () => {
-    setSearch("");         searchRef.current    = "";
-    setStatus("");         statusRef.current    = "";
+    setSearch("");    searchRef.current    = "";
+    setStatus("");    statusRef.current    = "";
     setSortBy("borrow_date"); sortByRef.current = "borrow_date";
-    setSortOrder("DESC");  sortOrderRef.current = "DESC";
-    setPage(1);            pageRef.current      = 1;
+    setSortOrder("DESC");     sortOrderRef.current = "DESC";
+    setPage(1);               pageRef.current      = 1;
     loadBorrows(1, "", "", "borrow_date", "DESC");
   };
 
@@ -422,50 +766,24 @@ const BorrowManagement = () => {
 
   const hasFilter = search || status || sortBy !== "borrow_date" || sortOrder !== "DESC";
 
-  // ── Dynamic actions per row ────────────────────────
-  const getActions = (row) => {
-    const actions = [
-      {
-        label: "View Detail",
-        icon:  <EyeOutlined />,
-        className: "view",
-        onClick: () => setViewId(row.id),
-      },
-    ];
+  const getActions = (row) => ([{
+    label: "View Detail",
+    icon:  <EyeOutlined />,
+    className: "view",
+    onClick: () => setViewId(row.id),
+  }]);
 
-    if (row.status !== "returned") {
-      actions.push({
-        label: "Return Book",
-        icon:  <CheckCircleOutlined />,
-        className: "activate",
-        onClick: () => setReturnBorrow(row),
-      });
-    }
-
-    return actions;
-  };
-
-  // ── Columns ───────────────────────────────────────
   const columns = [
     {
-      key: "_stt",
-      label: "STT",
-      sortable: false,
-      render: (_, __, idx) => (
-        <span className="bm-stt">{(page - 1) * PAGE_SIZE + idx + 1}</span>
-      ),
+      key: "_stt", label: "STT", sortable: false,
+      render: (_, __, idx) => <span className="bm-stt">{(page - 1) * PAGE_SIZE + idx + 1}</span>,
     },
     {
-      key: "book_title",
-      label: "Book",
-      sortable: false,
+      key: "book_title", label: "Book", sortable: false,
       render: (value, row) => (
         <div className="bm-book-cell">
-          <img
-            src={row.book_cover || "https://placehold.co/36x50?text=N/A"}
-            alt={value}
-            onError={e => { e.target.src = "https://placehold.co/36x50?text=N/A"; }}
-          />
+          <img src={row.book_cover || "https://placehold.co/32x44?text=N/A"} alt={value}
+               onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }} />
           <div>
             <div className="bm-book-title">{value}</div>
             <code className="bm-barcode-sm">{row.barcode}</code>
@@ -474,113 +792,62 @@ const BorrowManagement = () => {
       ),
     },
     {
-      key: "reader_name",
-      label: "Reader",
-      sortable: false,
+      key: "reader_name", label: "Reader", sortable: false,
       render: (value, row) => (
         <div className="bm-reader-cell">
-          <img
-            src={row.reader_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`}
-            alt={value}
-            className="bm-avatar"
-            onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`; }}
-          />
+          <img src={row.reader_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`}
+               alt={value} className="bm-table-avatar"
+               onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`; }} />
           <span>{value}</span>
         </div>
       ),
     },
     {
-      key: "borrow_date",
-      label: "Borrow Date",
-      sortable: false,
+      key: "borrow_date", label: "Borrow Date", sortable: false,
       render: v => <span className="bm-date">{fmtDate(v)}</span>,
     },
     {
-      key: "due_date",
-      label: "Due Date",
-      sortable: false,
-      render: (v, row) => (
-        <span className="bm-date" style={{ color: isOverdueDate(row) ? "#ff4d4f" : "inherit", fontWeight: isOverdueDate(row) ? 600 : 400 }}>
-          {fmtDate(v)}
-        </span>
-      ),
+      key: "due_date", label: "Due Date", sortable: false,
+      render: (v, row) => {
+        const od = row.status === "overdue" || (row.status === "borrowing" && new Date(v) < new Date());
+        return <span className="bm-date" style={{ color: od ? "#ff4d4f" : "inherit", fontWeight: od ? 600 : 400 }}>{fmtDate(v)}</span>;
+      },
     },
     {
-      key: "return_date",
-      label: "Return Date",
-      sortable: false,
+      key: "return_date", label: "Return Date", sortable: false,
       render: v => v
         ? <span className="bm-date" style={{ color: "#52c41a" }}>{fmtDate(v)}</span>
         : <span style={{ color: "#bfbfbf" }}>—</span>,
     },
     {
-      key: "status",
-      label: "Status",
-      sortable: false,
+      key: "status", label: "Status", sortable: false,
       render: v => <StatusBadge status={v} />,
     },
   ];
 
-  // Summary counts
-  const counts = {
-    borrowing: borrows.filter(b => b.status === "borrowing").length,
-    overdue:   borrows.filter(b => b.status === "overdue").length,
-    returned:  borrows.filter(b => b.status === "returned").length,
-  };
-
   return (
     <div className="borrow-management">
-
-      {/* ── Header ── */}
       <div className="header">
         <h1 className="tittle">Borrow Management</h1>
         <div className="header-actions">
-          <Filter
-            filterName="Status"
-            options={STATUS_FILTER}
-            value={status}
-            onChange={handleStatusFilter}
-          />
+          <Filter filterName="Status" options={STATUS_FILTER} value={status} onChange={handleStatusFilter} />
           <Select
-            value={`${sortBy}__${sortOrder}`}
-            style={{ width: 180 }}
+            value={`${sortBy}__${sortOrder}`} style={{ width: 180 }}
             onChange={handleSortChange}
             suffixIcon={<SortAscendingOutlined style={{ color: "#088ef5", fontSize: "1.5rem" }} />}
-            options={SORT_OPTIONS.map(o => ({
-              label: o.label,
-              value: `${o.sortBy}__${o.sortOrder}`,
-            }))}
+            options={SORT_OPTIONS.map(o => ({ label: o.label, value: `${o.sortBy}__${o.sortOrder}` }))}
           />
-          <SearchBar
-            value={search}
-            onChange={handleSearch}
-            placeholder="Search book, reader, barcode..."
-          />
-          {hasFilter && (
-            <button className="btn-reset" onClick={handleReset}>✕ Reset</button>
-          )}
-          <button className="btn-add" onClick={() => setCreateOpen(true)}>
-            <PlusOutlined /> New Borrow
+          <SearchBar value={search} onChange={handleSearch} placeholder="Search book, reader, barcode..." />
+          {hasFilter && <button className="btn-reset" onClick={handleReset}>✕ Reset</button>}
+          <button className="btn-borrow" onClick={() => setBorrowOpen(true)}>
+            <ScanOutlined /> Borrow
+          </button>
+          <button className="btn-return" onClick={() => setReturnOpen(true)}>
+            <SwapOutlined /> Return
           </button>
         </div>
       </div>
 
-      {/* ── Summary chips ── */}
-      <div className="bm-summary-row">
-        {[
-          { label: "Borrowing", count: counts.borrowing, color: "#2c8df4", bg: "#e6f4ff" },
-          { label: "Overdue",   count: counts.overdue,   color: "#ff4d4f", bg: "#fff1f0" },
-          { label: "Returned",  count: counts.returned,  color: "#52c41a", bg: "#f6ffed" },
-        ].map(s => (
-          <div key={s.label} className="bm-chip" style={{ background: s.bg, color: s.color }}>
-            <span className="bm-chip-count">{s.count}</span>
-            <span className="bm-chip-label">{s.label}</span>
-          </div>
-        ))}
-        <span className="bm-chip-total">Total this page: <strong>{borrows.length}</strong></span>
-      </div>
-
-      {/* ── Filter summary ── */}
       {(search || status) && (
         <div className="filter-summary">
           {search && <span className="filter-tag">🔍 "{search}"</span>}
@@ -589,16 +856,13 @@ const BorrowManagement = () => {
         </div>
       )}
 
-      {/* ── Table ── */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "6rem" }}><Spin size="large" /></div>
       ) : borrows.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📚</div>
-          <p>{search || status ? "No records match your search" : "No borrow records found"}</p>
-          {(search || status) && (
-            <button className="btn-reset" onClick={handleReset}>Clear filters</button>
-          )}
+          <p>{search || status ? "No records match" : "No borrow records yet"}</p>
+          {(search || status) && <button className="btn-reset" onClick={handleReset}>Clear filters</button>}
         </div>
       ) : (
         <Table
@@ -609,24 +873,13 @@ const BorrowManagement = () => {
         />
       )}
 
-      {/* ── Pagination ── */}
       {!loading && borrows.length > 0 && (
-        <CustomPagination
-          total={total} pageSize={PAGE_SIZE}
-          currentPage={page} onChange={handlePageChange}
-        />
+        <CustomPagination total={total} pageSize={PAGE_SIZE} currentPage={page} onChange={handlePageChange} />
       )}
 
-      {/* ── Modals ── */}
-      {viewId      && <ViewModal   borrowId={viewId}    onClose={() => setViewId(null)} />}
-      {createOpen  && <CreateModal onClose={() => setCreateOpen(false)} onCreated={reload} />}
-      {returnBorrow && (
-        <ReturnModal
-          borrow={returnBorrow}
-          onClose={() => setReturnBorrow(null)}
-          onReturned={reload}
-        />
-      )}
+      {viewId      && <ViewModal   borrowId={viewId}  onClose={() => setViewId(null)} />}
+      {borrowOpen  && <BorrowModal onClose={() => setBorrowOpen(false)} onDone={reload} />}
+      {returnOpen  && <ReturnModal onClose={() => setReturnOpen(false)} onDone={reload} />}
     </div>
   );
 };

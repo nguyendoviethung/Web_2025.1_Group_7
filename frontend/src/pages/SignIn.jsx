@@ -59,7 +59,8 @@ export default function SignIn() {
       }, 500);
 
     } catch (err) {
-      toast.error(err.message || "Invalid email or password"); // ← toast.xxx
+     const errorMessage = err.response?.data?.message || "Incorrect email or password";
+     toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

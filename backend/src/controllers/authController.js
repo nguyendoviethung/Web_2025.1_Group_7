@@ -62,16 +62,17 @@ async register(req, res) {
 
     const user = await UserModel.findByEmail(email);
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+      return res.status(401).json({ message: 'Incorrect email or password' });
+      }
 
     if (user.status !== 'active') {
       return res.status(403).json({ message: 'Account disabled' });
     }
 
     const isMatch = await compare(password, user.password);
+
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: 'Incorrect email or password' });
     }
 
     const payload      = { id: user.id, role: user.role };

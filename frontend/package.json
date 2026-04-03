@@ -21,6 +21,7 @@
     "axios": "^1.13.2",
     "bootstrap": "^5.3.8",
     "framer-motion": "^12.23.22",
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.552.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
