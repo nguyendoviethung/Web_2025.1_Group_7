@@ -28,7 +28,6 @@ const SORT_OPTIONS = [
   { label: "Oldest First", sortBy: "created_at", sortOrder: "ASC"  },
   { label: "Name A→Z",     sortBy: "full_name",  sortOrder: "ASC"  },
   { label: "Name Z→A",     sortBy: "full_name",  sortOrder: "DESC" },
-  { label: "Email A→Z",    sortBy: "email",      sortOrder: "ASC"  },
 ];
 
 // ── Status metadata ───────────────────────────────────────────────────────────

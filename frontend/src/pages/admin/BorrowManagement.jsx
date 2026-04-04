@@ -174,89 +174,87 @@ const BORROW_STEP = { READER: "READER", BOOKS: "BOOKS" };
 function BorrowModal({ onClose, onDone }) {
   const toast = useToast();
 
-  const [step,        setStep]        = useState(BORROW_STEP.READER);
-  const [checking,    setChecking]    = useState(false);
-  const [submitting,  setSubmitting]  = useState(false);
-  const [readerInfo,  setReaderInfo]  = useState(null);
+  const [step,         setStep]         = useState(BORROW_STEP.READER);
+  const [checking,     setChecking]     = useState(false);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [readerInfo,   setReaderInfo]   = useState(null);
   const [scannedBooks, setScannedBooks] = useState([]);
-  const [dueDate,     setDueDate]     = useState(defaultDueDate());
+  const [dueDate,      setDueDate]      = useState(defaultDueDate());
 
-  // Dùng ref để tránh stale closure trong QR callback
-  const stepRef        = useRef(BORROW_STEP.READER);
-  const checkingRef    = useRef(false);
-  const readerInfoRef  = useRef(null);
+  const stepRef         = useRef(BORROW_STEP.READER);
+  const checkingRef     = useRef(false);
+  const readerInfoRef   = useRef(null);
   const scannedBooksRef = useRef([]);
+  const scannedSetRef   = useRef(new Set()); // Track mã đã quét thành công
 
-  // THÊM MỚI: Ref chống spam
-  const lastScannedRef = useRef(""); 
-  const mountTimeRef   = useRef(Date.now()); // Dùng để chặn quét ngay lúc vừa bật
-
-  useEffect(() => { stepRef.current        = step;        }, [step]);
-  useEffect(() => { checkingRef.current    = checking;    }, [checking]);
-  useEffect(() => { readerInfoRef.current  = readerInfo;  }, [readerInfo]);
+  useEffect(() => { stepRef.current         = step;         }, [step]);
+  useEffect(() => { checkingRef.current     = checking;     }, [checking]);
+  useEffect(() => { readerInfoRef.current   = readerInfo;   }, [readerInfo]);
   useEffect(() => { scannedBooksRef.current = scannedBooks; }, [scannedBooks]);
 
-  // ── QR scanned ────────────────────────────────────
-const handleQrScan = useCallback(async (text) => {
-  if (checkingRef.current) return;
-  if (Date.now() - mountTimeRef.current < 1000) return;
+  const handleQrScan = useCallback(async (text) => {
+    if (checkingRef.current) return; // Đang xử lý → bỏ qua mọi frame mới
 
-  // Chỉ chặn nếu mã GIỐNG HỆT và đang KHÔNG có lỗi (tức là lần trước thành công)
-  if (lastScannedRef.current === text) return;
-  lastScannedRef.current = text;
+    if (stepRef.current === BORROW_STEP.READER) {
+      if (scannedSetRef.current.has(text)) return; // Đã quét thành công mã này rồi
 
-  if (stepRef.current === BORROW_STEP.READER) {
-    setChecking(true);
-    try {
-      const info = await borrowService.checkReader(text);
-      setReaderInfo(info);
-      if (info.canBorrow) {
-        setStep(BORROW_STEP.BOOKS);
-        toast.success(`Reader verified: ${info.full_name}`);
+      setChecking(true);
+      try {
+        const info = await borrowService.checkReader(text);
+        scannedSetRef.current.add(text); // Chỉ add khi thành công
+        setReaderInfo(info);
+        if (info.canBorrow) {
+          setStep(BORROW_STEP.BOOKS);
+          toast.success(`Reader verified: ${info.full_name}`);
+        }
+      } catch (err) {
+        toast.error(err.message || "Reader not found");
+        // Không add → cho phép quét lại
+      } finally {
+        setChecking(false);
       }
-    } catch (err) {
-      toast.error(err.message || "Reader not found");
-      // Reset để cho phép quét lại mã này sau khi lỗi
-      lastScannedRef.current = "";
-    } finally {
-      setChecking(false);
-    }
 
-  } else if (stepRef.current === BORROW_STEP.BOOKS) {
-    const barcode = text.toUpperCase();
-    if (scannedBooksRef.current.find(b => b.barcode === barcode)) {
-      toast.warning("Already scanned this book");
-      return;
+    } else if (stepRef.current === BORROW_STEP.BOOKS) {
+      const barcode = text.toUpperCase();
+
+      if (scannedSetRef.current.has(barcode)) {
+        toast.warning("Already scanned this book");
+        return;
+      }
+
+      const info      = readerInfoRef.current;
+      const remaining = info.maxBorrowLimit - info.currentBorrowing - scannedBooksRef.current.length;
+      if (remaining <= 0) {
+        toast.warning("Borrow limit reached");
+        return;
+      }
+
+      setChecking(true);
+      try {
+        const copy = await borrowService.checkBarcode(barcode);
+        scannedSetRef.current.add(barcode); // Chỉ add khi thành công
+        setScannedBooks(prev => [...prev, copy]);
+        toast.success(`Added: ${copy.book_title}`);
+      } catch (err) {
+        toast.error(err.message || "Invalid barcode or book not available");
+        // Không add → cho phép quét lại
+      } finally {
+        setChecking(false);
+      }
     }
-    const info      = readerInfoRef.current;
-    const remaining = info.maxBorrowLimit - info.currentBorrowing - scannedBooksRef.current.length;
-    if (remaining <= 0) {
-      toast.warning("Borrow limit reached");
-      return;
-    }
-    setChecking(true);
-    try {
-      const copy = await borrowService.checkBarcode(barcode);
-      setScannedBooks(prev => [...prev, copy]);
-      toast.success(`Added: ${copy.book_title}`);
-    } catch (err) {
-      toast.error(err.message || "Invalid barcode or book not available");
-      // Reset để cho phép quét lại
-      lastScannedRef.current = "";
-    } finally {
-      setChecking(false);
-    }
-  }
-}, [toast]);
-  const removeBook = (barcode) =>
+  }, [toast]);
+
+  const removeBook = (barcode) => {
+    scannedSetRef.current.delete(barcode); // Xóa khỏi Set để có thể quét lại
     setScannedBooks(prev => prev.filter(b => b.barcode !== barcode));
+  };
 
   const handleReset = () => {
     setStep(BORROW_STEP.READER);
     setReaderInfo(null);
     setScannedBooks([]);
     setDueDate(defaultDueDate());
-    lastScannedRef.current = ""; // Reset lại mã đã lưu để có thể quét lại
+    scannedSetRef.current.clear();
   };
 
   const handleSubmit = async () => {
@@ -291,7 +289,6 @@ const handleQrScan = useCallback(async (text) => {
           <button className="bm-btn-close" onClick={onClose}><CloseOutlined /></button>
         </div>
 
-        {/* Progress */}
         <div className="bm-steps">
           <div className={`bm-step ${step === BORROW_STEP.READER ? "bm-step--active" : "bm-step--done"}`}>
             <span className="bm-step-dot">1</span> Scan Student Card
@@ -304,18 +301,17 @@ const handleQrScan = useCallback(async (text) => {
 
         <div className="bm-modal__body">
 
-          {/* ═══ STEP 1 ═══════════════════════════════════ */}
+          {/* ═══ STEP 1: Quét thẻ sinh viên ═══ */}
           {step === BORROW_STEP.READER && (
             <div className="bm-scanner-layout">
 
-              {/* Camera */}
               <div className="bm-camera-col">
                 <div className="bm-camera-label">
                   <UserOutlined /> Point camera at Student ID card
                 </div>
                 <QrScanner
                   onScan={handleQrScan}
-                  active={step === BORROW_STEP.READER && !checking}
+                  active={!checking}
                 />
                 {checking && (
                   <div className="bm-checking-overlay">
@@ -324,7 +320,6 @@ const handleQrScan = useCallback(async (text) => {
                 )}
               </div>
 
-              {/* Reader result */}
               <div className="bm-result-col">
                 {!readerInfo ? (
                   <div className="bm-scan-waiting">
@@ -367,14 +362,20 @@ const handleQrScan = useCallback(async (text) => {
                     )}
 
                     <div className="bm-card-actions">
-                      <button className="bm-btn bm-btn--ghost bm-btn--sm" onClick={() => {
-                        setReaderInfo(null);
-                        lastScannedRef.current = ""; // Reset allow re-scan
-                      }}>
+                      <button
+                        className="bm-btn bm-btn--ghost bm-btn--sm"
+                        onClick={() => {
+                          setReaderInfo(null);
+                          scannedSetRef.current.clear(); // Clear để quét lại
+                        }}
+                      >
                         Scan Again
                       </button>
                       {readerInfo.canBorrow && (
-                        <button className="bm-btn bm-btn--primary bm-btn--sm" onClick={() => setStep(BORROW_STEP.BOOKS)}>
+                        <button
+                          className="bm-btn bm-btn--primary bm-btn--sm"
+                          onClick={() => setStep(BORROW_STEP.BOOKS)}
+                        >
                           Continue →
                         </button>
                       )}
@@ -385,13 +386,11 @@ const handleQrScan = useCallback(async (text) => {
             </div>
           )}
 
-          {/* ═══ STEP 2 ═══════════════════════════════════ */}
+          {/* ═══ STEP 2: Quét sách ═══ */}
           {step === BORROW_STEP.BOOKS && (
             <div className="bm-scanner-layout">
 
-              {/* Camera */}
               <div className="bm-camera-col">
-                {/* Reader mini card */}
                 <div className="bm-reader-mini">
                   <img
                     src={readerInfo.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${readerInfo.full_name}`}
@@ -401,15 +400,22 @@ const handleQrScan = useCallback(async (text) => {
                   <div>
                     <div className="bm-reader-mini-name">{readerInfo.full_name}</div>
                     <div className="bm-reader-mini-sub">
-                      {remaining > 0 ? `${remaining} slot(s) remaining` : <span style={{ color: "#ff4d4f" }}>Limit reached</span>}
+                      {remaining > 0
+                        ? `${remaining} slot(s) remaining`
+                        : <span style={{ color: "#ff4d4f" }}>Limit reached</span>
+                      }
                     </div>
                   </div>
-                  <button className="bm-btn bm-btn--ghost bm-btn--xs" onClick={() => {
+                  <button
+                    className="bm-btn bm-btn--ghost bm-btn--xs"
+                    onClick={() => {
                       setReaderInfo(null);
-                      lastScannedRef.current = "";
-                      mountTimeRef.current   = Date.now(); // Cho camera 1s "nghỉ" rồi mới nhận QR mới
-                    }}>
-                      Change
+                      setScannedBooks([]);
+                      scannedSetRef.current.clear(); // Clear hết để quét lại từ đầu
+                      setStep(BORROW_STEP.READER);
+                    }}
+                  >
+                    Change
                   </button>
                 </div>
 
@@ -421,7 +427,7 @@ const handleQrScan = useCallback(async (text) => {
                   <>
                     <QrScanner
                       onScan={handleQrScan}
-                      active={step === BORROW_STEP.BOOKS && !checking && remaining > 0}
+                      active={!checking}
                     />
                     {checking && (
                       <div className="bm-checking-overlay">
@@ -437,7 +443,6 @@ const handleQrScan = useCallback(async (text) => {
                   </div>
                 )}
 
-                {/* Due date */}
                 <div className="bm-due-row">
                   <label>Due Date</label>
                   <input
@@ -450,7 +455,6 @@ const handleQrScan = useCallback(async (text) => {
                 </div>
               </div>
 
-              {/* Books list */}
               <div className="bm-result-col">
                 <div className="bm-result-title">
                   Scanned Books <span className="bm-count-badge">{scannedBooks.length}</span>
@@ -490,7 +494,10 @@ const handleQrScan = useCallback(async (text) => {
         </div>
 
         <div className="bm-modal__footer">
-          <button className="bm-btn bm-btn--secondary" onClick={step === BORROW_STEP.READER ? onClose : handleReset}>
+          <button
+            className="bm-btn bm-btn--secondary"
+            onClick={step === BORROW_STEP.READER ? onClose : handleReset}
+          >
             {step === BORROW_STEP.READER ? "Cancel" : "Reset"}
           </button>
           {step === BORROW_STEP.BOOKS && (
@@ -499,7 +506,10 @@ const handleQrScan = useCallback(async (text) => {
               onClick={handleSubmit}
               disabled={submitting || scannedBooks.length === 0}
             >
-              {submitting ? <Spin size="small" /> : <><CheckCircleOutlined /> Confirm Borrow ({scannedBooks.length})</>}
+              {submitting
+                ? <Spin size="small" />
+                : <><CheckCircleOutlined /> Confirm Borrow ({scannedBooks.length})</>
+              }
             </button>
           )}
         </div>
@@ -885,3 +895,4 @@ const BorrowManagement = () => {
 };
 
 export default BorrowManagement;
+

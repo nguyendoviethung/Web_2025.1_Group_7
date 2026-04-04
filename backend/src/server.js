@@ -1,6 +1,7 @@
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { startBorrowCron } from './cron/borrowCron.js';
 
 const require   = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,9 @@ connect((err, client, release) => {
 
   release();
   console.log(' PostgreSQL connected');
+
+  // Khởi động cron job để cập nhật trạng thái mượn quá hạn và tính tiền phạt
+  startBorrowCron();
 
   app.listen(PORT, () => {
     console.log(` Server running at http://localhost:${PORT}`);
