@@ -166,58 +166,102 @@ function ViewModal({ borrowId, onClose }) {
 
 // ════════════════════════════════════════════════════════════════════════════
 // Modal: BORROW
-// Step 1 — Quét QR thẻ SV → kiểm tra reader
-// Step 2 — Quét QR bìa sách → thêm từng cuốn vào danh sách
 // ════════════════════════════════════════════════════════════════════════════
+
 const BORROW_STEP = { READER: "READER", BOOKS: "BOOKS" };
 
 function BorrowModal({ onClose, onDone }) {
-  const toast = useToast();
-
-  const [step,         setStep]         = useState(BORROW_STEP.READER);
+  const toast = useToast(); //
+  const [step,         setStep]         = useState(BORROW_STEP.READER); 
   const [checking,     setChecking]     = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
-  const [readerInfo,   setReaderInfo]   = useState(null);
-  const [scannedBooks, setScannedBooks] = useState([]);
-  const [dueDate,      setDueDate]      = useState(defaultDueDate());
+  const [readerInfo,   setReaderInfo]   = useState(null); 
+  const [scannedBooks, setScannedBooks] = useState([]); 
+  const [dueDate,      setDueDate]      = useState(defaultDueDate()); 
+  const [cameraReady,  setCameraReady]  = useState(false); 
+  const stepRef             = useRef(BORROW_STEP.READER); 
+  const checkingRef         = useRef(false); 
+  const readerInfoRef       = useRef(null); 
+  const scannedBooksRef     = useRef([]); 
+  const readerScannedSetRef = useRef(new Set()); 
+  const bookScannedSetRef   = useRef(new Set()); 
+  const pausedTextsRef      = useRef(new Map()); 
+  const cameraReadyTimer = useRef(null); 
 
-  const stepRef         = useRef(BORROW_STEP.READER);
-  const checkingRef     = useRef(false);
-  const readerInfoRef   = useRef(null);
-  const scannedBooksRef = useRef([]);
-  const scannedSetRef   = useRef(new Set()); // Track mã đã quét thành công
-
-  useEffect(() => { stepRef.current         = step;         }, [step]);
-  useEffect(() => { checkingRef.current     = checking;     }, [checking]);
-  useEffect(() => { readerInfoRef.current   = readerInfo;   }, [readerInfo]);
+  useEffect(() => { stepRef.current         = step;         }, [step]); 
+  useEffect(() => { checkingRef.current     = checking;     }, [checking]); 
+  useEffect(() => { readerInfoRef.current   = readerInfo;   }, [readerInfo]); 
   useEffect(() => { scannedBooksRef.current = scannedBooks; }, [scannedBooks]);
 
+ // Khi chuyển sang step BOOKS, delay 500ms mới active camera để tránh quét nhầm QR thẻ SV vừa quét ở step READER
+  useEffect(() => {
+    if (step === BORROW_STEP.BOOKS) {
+      setCameraReady(false);
+      cameraReadyTimer.current = setTimeout(() => setCameraReady(true), 500);
+    } else {
+      setCameraReady(false);
+    }
+    return () => clearTimeout(cameraReadyTimer.current);
+  }, [step]);
+
+                 
+  useEffect(() => () => clearTimeout(cameraReadyTimer.current), []);
+
+  // Kiểm tra text có đang bị pause không
+  const isTextPaused = useCallback((text) => {
+    const until = pausedTextsRef.current.get(text);
+    if (!until) return false;
+    if (Date.now() > until) {
+      pausedTextsRef.current.delete(text); // Hết hạn → xóa
+      return false;
+    }
+    return true;
+  }, []);
+
+  // Pause 1 text cụ thể trong ms milliseconds
+  const pauseText = useCallback((text, ms = 5000) => {
+    pausedTextsRef.current.set(text, Date.now() + ms);
+  }, []);
+
+  // Xử lý kết quả quét QR từ QrScanner
   const handleQrScan = useCallback(async (text) => {
-    if (checkingRef.current) return; // Đang xử lý → bỏ qua mọi frame mới
+  
+    if (checkingRef.current) return; 
 
+    // ── STEP 1: Quét thẻ sinh viên ──
     if (stepRef.current === BORROW_STEP.READER) {
-      if (scannedSetRef.current.has(text)) return; // Đã quét thành công mã này rồi
 
-      setChecking(true);
-      try {
+      if (readerScannedSetRef.current.has(text)) return; 
+      if (isTextPaused(text)) return; 
+
+      setChecking(true); 
+      try { 
         const info = await borrowService.checkReader(text);
-        scannedSetRef.current.add(text); // Chỉ add khi thành công
+        readerScannedSetRef.current.add(text);
         setReaderInfo(info);
         if (info.canBorrow) {
           setStep(BORROW_STEP.BOOKS);
           toast.success(`Reader verified: ${info.full_name}`);
         }
       } catch (err) {
-        toast.error(err.message || "Reader not found");
-        // Không add → cho phép quét lại
+        toast.error(err.message || "Reader not found"); 
+        pauseText(text, 5000);
       } finally {
         setChecking(false);
       }
 
+    // ── STEP 2: Quét sách ──
     } else if (stepRef.current === BORROW_STEP.BOOKS) {
+      // QR thẻ SV vẫn còn trong khung → bỏ qua silent
+      if (readerScannedSetRef.current.has(text)) return;
+
       const barcode = text.toUpperCase();
 
-      if (scannedSetRef.current.has(barcode)) {
+      if (isTextPaused(barcode)) return;
+
+      if (bookScannedSetRef.current.has(barcode)) {
+        // Đã quét cuốn này → pause luôn để không spam toast
+        pauseText(barcode, 3000);
         toast.warning("Already scanned this book");
         return;
       }
@@ -225,6 +269,7 @@ function BorrowModal({ onClose, onDone }) {
       const info      = readerInfoRef.current;
       const remaining = info.maxBorrowLimit - info.currentBorrowing - scannedBooksRef.current.length;
       if (remaining <= 0) {
+        pauseText(barcode, 2000);
         toast.warning("Borrow limit reached");
         return;
       }
@@ -232,29 +277,38 @@ function BorrowModal({ onClose, onDone }) {
       setChecking(true);
       try {
         const copy = await borrowService.checkBarcode(barcode);
-        scannedSetRef.current.add(barcode); // Chỉ add khi thành công
+        bookScannedSetRef.current.add(barcode);
         setScannedBooks(prev => [...prev, copy]);
         toast.success(`Added: ${copy.book_title}`);
       } catch (err) {
         toast.error(err.message || "Invalid barcode or book not available");
-        // Không add → cho phép quét lại
+        pauseText(barcode, 4000);
       } finally {
         setChecking(false);
       }
     }
-  }, [toast]);
-
+  }, [toast, isTextPaused, pauseText]);
+ 
+  // Xóa sách đã quét khỏi danh sách
   const removeBook = (barcode) => {
-    scannedSetRef.current.delete(barcode); // Xóa khỏi Set để có thể quét lại
+    bookScannedSetRef.current.delete(barcode);
     setScannedBooks(prev => prev.filter(b => b.barcode !== barcode));
   };
 
+  // Xóa toàn bộ state liên quan đến quét để bắt đầu lại
+  const clearAllState = () => {
+    readerScannedSetRef.current.clear();
+    bookScannedSetRef.current.clear();
+    pausedTextsRef.current.clear();
+  };
+
+  // Reset về step 1 và xóa toàn bộ state liên quan đến quét
   const handleReset = () => {
     setStep(BORROW_STEP.READER);
     setReaderInfo(null);
     setScannedBooks([]);
     setDueDate(defaultDueDate());
-    scannedSetRef.current.clear();
+    clearAllState();
   };
 
   const handleSubmit = async () => {
@@ -304,19 +358,16 @@ function BorrowModal({ onClose, onDone }) {
           {/* ═══ STEP 1: Quét thẻ sinh viên ═══ */}
           {step === BORROW_STEP.READER && (
             <div className="bm-scanner-layout">
-
               <div className="bm-camera-col">
                 <div className="bm-camera-label">
                   <UserOutlined /> Point camera at Student ID card
                 </div>
-                <QrScanner
-                  onScan={handleQrScan}
-                  active={!checking}
-                />
+
+                {/* active=true luôn ở step 1, checking chỉ là gate trong QrScanner */}
+                <QrScanner onScan={handleQrScan} active={true} />
+
                 {checking && (
-                  <div className="bm-checking-overlay">
-                    <Spin /> Verifying...
-                  </div>
+                  <div className="bm-checking-overlay"><Spin /> Verifying...</div>
                 )}
               </div>
 
@@ -366,7 +417,7 @@ function BorrowModal({ onClose, onDone }) {
                         className="bm-btn bm-btn--ghost bm-btn--sm"
                         onClick={() => {
                           setReaderInfo(null);
-                          scannedSetRef.current.clear(); // Clear để quét lại
+                          clearAllState();
                         }}
                       >
                         Scan Again
@@ -389,7 +440,6 @@ function BorrowModal({ onClose, onDone }) {
           {/* ═══ STEP 2: Quét sách ═══ */}
           {step === BORROW_STEP.BOOKS && (
             <div className="bm-scanner-layout">
-
               <div className="bm-camera-col">
                 <div className="bm-reader-mini">
                   <img
@@ -411,7 +461,7 @@ function BorrowModal({ onClose, onDone }) {
                     onClick={() => {
                       setReaderInfo(null);
                       setScannedBooks([]);
-                      scannedSetRef.current.clear(); // Clear hết để quét lại từ đầu
+                      clearAllState();
                       setStep(BORROW_STEP.READER);
                     }}
                   >
@@ -425,13 +475,14 @@ function BorrowModal({ onClose, onDone }) {
 
                 {remaining > 0 ? (
                   <>
+                    {/* cameraReady delay 800ms: tránh bắt ngay QR thẻ SV vừa quét */}
                     <QrScanner
                       onScan={handleQrScan}
-                      active={!checking}
+                      active={cameraReady}
                     />
-                    {checking && (
+                    {(!cameraReady || checking) && (
                       <div className="bm-checking-overlay">
-                        <Spin /> Checking book...
+                        <Spin /> {!cameraReady ? "Starting camera..." : "Checking book..."}
                       </div>
                     )}
                   </>
@@ -517,63 +568,97 @@ function BorrowModal({ onClose, onDone }) {
     </div>
   );
 }
+
 // ════════════════════════════════════════════════════════════════════════════
 // Modal: RETURN
 // Quét từng barcode sách → hiện thông tin → submit tất cả
 // ════════════════════════════════════════════════════════════════════════════
 function ReturnModal({ onClose, onDone }) {
-  const toast = useToast();
-  const [checking,    setChecking]    = useState(false);
-  const [submitting,  setSubmitting]  = useState(false);
+const toast = useToast();
+  const [checking,     setChecking]     = useState(false);
+  const [submitting,   setSubmitting]   = useState(false);
   const [scannedItems, setScannedItems] = useState([]);
 
   const checkingRef     = useRef(false);
   const scannedItemsRef = useRef([]);
 
-  // THÊM MỚI: Ref chống spam cho ReturnModal
-  const lastScannedRef = useRef("");
-  const mountTimeRef   = useRef(Date.now());
+  // ── Per-text pause: Map<barcode, unpauseTimestamp> ──
+  // Chặn từng barcode riêng lẻ, không global → barcode khác vẫn xử lý bình thường
+  const pausedTextsRef = useRef(new Map());
 
-  useEffect(() => { checkingRef.current    = checking;    }, [checking]);
+  useEffect(() => { checkingRef.current     = checking;     }, [checking]);
   useEffect(() => { scannedItemsRef.current = scannedItems; }, [scannedItems]);
 
+  // Kiểm tra barcode có đang bị pause không
+  const isTextPaused = useCallback((text) => {
+    const until = pausedTextsRef.current.get(text);
+    if (!until) return false;
+    if (Date.now() > until) {
+      pausedTextsRef.current.delete(text);
+      return false;
+    }
+    return true;
+  }, []);
+
+  // Pause 1 barcode cụ thể trong ms milliseconds
+  const pauseText = useCallback((text, ms = 4000) => {
+    pausedTextsRef.current.set(text, Date.now() + ms);
+  }, []);
+
   const handleQrScan = useCallback(async (text) => {
+    // Guard: đang có API request bay
     if (checkingRef.current) return;
-
-    // 1. Chặn quét 1 giây đầu tiên khi vừa mở camera
-    if (Date.now() - mountTimeRef.current < 1000) return;
-
-    // 2. Chống spam tuyệt đối: Không xử lý nếu mã giống hệt mã vừa quét
-    if (lastScannedRef.current === text) return;
-    
-    lastScannedRef.current = text;
 
     const barcode = text.toUpperCase();
 
+    // Barcode này đang bị pause (vừa lỗi) → bỏ qua silent
+    if (isTextPaused(barcode)) return;
+
+    // Đã có trong danh sách rồi
     if (scannedItemsRef.current.find(i => i.barcode === barcode)) {
       toast.warning("Already in return list");
+      pauseText(barcode, 3000);
       return;
     }
 
     setChecking(true);
     try {
       const info = await borrowService.checkReturnBarcode(barcode);
+
+      // ── Kiểm tra người đọc khác nhau ──
+      // Nếu danh sách đã có sách, so sánh user_id với sách vừa quét
+      const existing = scannedItemsRef.current;
+      if (existing.length > 0 && existing[0].user_id !== info.user_id) {
+        toast.error(
+          `This book belongs to "${info.reader_name}" — ` +
+          `different from "${existing[0].reader_name}" in the current list. ` +
+          `You can only return books for one reader at a time.`
+        );
+        pauseText(barcode, 4000);
+        return;
+      }
+
       setScannedItems(prev => [...prev, info]);
 
       if (info.fine_amount > 0) {
-        toast.warning(`${info.book_title} — ${info.overdue_days} day(s) overdue · Fine: ${fmtMoney(info.fine_amount)}`);
+        toast.warning(
+          `${info.book_title} — ${info.overdue_days} day(s) overdue · Fine: ${fmtMoney(info.fine_amount)}`
+        );
       } else {
         toast.success(`Added: ${info.book_title}`);
       }
     } catch (err) {
       toast.error(err.message || "Book not found or not borrowed");
+      pauseText(barcode, 4000);
     } finally {
       setChecking(false);
     }
-  }, [toast]);
+  }, [toast, isTextPaused, pauseText]);
 
-  const removeItem = (barcode) =>
+  const removeItem = (barcode) => {
+    pausedTextsRef.current.delete(barcode); // Cho phép quét lại nếu xóa khỏi list
     setScannedItems(prev => prev.filter(i => i.barcode !== barcode));
+  };
 
   const totalFine = scannedItems.reduce((s, i) => s + (i.fine_amount || 0), 0);
 
@@ -693,6 +778,7 @@ function ReturnModal({ onClose, onDone }) {
     </div>
   );
 }
+
 // ════════════════════════════════════════════════════════════════════════════
 // Main Page
 // ════════════════════════════════════════════════════════════════════════════
@@ -848,7 +934,7 @@ const BorrowManagement = () => {
             options={SORT_OPTIONS.map(o => ({ label: o.label, value: `${o.sortBy}__${o.sortOrder}` }))}
           />
           <SearchBar value={search} onChange={handleSearch} placeholder="Search book, reader, barcode..." />
-          {hasFilter && <button className="btn-reset" onClick={handleReset}>✕ Reset</button>}
+          {hasFilter && <button className="btn-reset" onClick={handleReset}>✕</button>}
           <button className="btn-borrow" onClick={() => setBorrowOpen(true)}>
             <ScanOutlined /> Borrow
           </button>
@@ -895,4 +981,3 @@ const BorrowManagement = () => {
 };
 
 export default BorrowManagement;
-

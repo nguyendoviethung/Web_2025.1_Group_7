@@ -535,3 +535,70 @@
 .table-dropdown-item {
   &.activate { color: #52c41a; &:hover { background: #f6ffed; } }
 }
+
+// ── QR scanner viewport (html5-qrcode injects here) ──
+// Dùng [id$="__..."] thay vì #qr-reader__... cứng
+// vì QrScanner dùng ID random (qr-abc123__scan_region, v.v.)
+.qr-scanner-wrap {
+  position: relative;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  background: #000;
+
+  video {
+    display: block;
+    width: 100% !important;
+    border-radius: 1.2rem;
+  }
+
+  // Ẩn video thừa nếu thư viện render nhiều hơn 1
+  video + video {
+    display: none !important;
+  }
+
+  // Ẩn phần dashboard (nút chụp file, status text, v.v.)
+  [id$="__dashboard"] {
+    display: none !important;
+  }
+
+  // Ẩn header message nếu có
+  [id$="__header_message"] {
+    display: none !important;
+  }
+
+  // Ẩn icon file scan
+  [id$="__filescan_input"],
+  [id$="__dashboard_section_fsr"] {
+    display: none !important;
+  }
+
+  // Scan region: bỏ border/background mặc định của thư viện
+  [id$="__scan_region"] {
+    background: transparent !important;
+    border: none !important;
+
+    img { display: none !important; }
+  }
+
+  // Nếu vẫn còn scan_region thứ 2 → ẩn
+  [id$="__scan_region"] ~ [id$="__scan_region"] {
+    display: none !important;
+  }
+}
+
+.qr-scanner-viewport {
+  width: 100%;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  min-height: 24rem;
+  background: #111;
+}
+
+.qr-scanner-error {
+  padding: 1.2rem 1.4rem;
+  background: #fff1f0;
+  color: #cf1322;
+  border-radius: 0.8rem;
+  font-size: 1.3rem;
+  margin-top: 0.8rem;
+}
