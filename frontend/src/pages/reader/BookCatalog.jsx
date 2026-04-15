@@ -1,5 +1,5 @@
 // frontend/src/pages/reader/BookCatalog.jsx
-// Cập nhật: thêm nút Reserve + tab Reviews trong modal chi tiết sách
+// Reviews tab is read-only — writing is done via notification
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Spin, Select, Rate } from "antd";
@@ -22,103 +22,41 @@ const SORT_OPTIONS = [
   { label: "Title A→Z",     value: "title__ASC"              },
 ];
 
-// ── Review Stars Component ────────────────────────────
-function StarRating({ value, onChange, readonly = false, size = 20 }) {
-  return (
-    <Rate
-      value={value}
-      onChange={onChange}
-      disabled={readonly}
-      style={{ fontSize: size, color: "#faad14" }}
-    />
-  );
+// ── Star display ──────────────────────────────────────
+function StarDisplay({ value, size = 14 }) {
+  return <Rate value={value} disabled style={{ fontSize: size, color: "#faad14" }} />;
 }
 
-// ── Review Section trong modal ────────────────────────
+// ── Read-only Review Section ──────────────────────────
 function ReviewSection({ bookId, bookTitle }) {
-  const toast = useToast();
- 
-  const [reviews,   setReviews]   = useState([]);
-  const [dist,      setDist]      = useState([]);
-  const [total,     setTotal]     = useState(0);
-  const [myReview,  setMyReview]  = useState(null);
-  const [canReview, setCanReview] = useState(false);   // ← đã trả sách chưa
-  const [borrowId,  setBorrowId]  = useState(null);
-  const [rating,    setRating]    = useState(0);
-  const [content,   setContent]   = useState("");
-  const [saving,    setSaving]    = useState(false);
-  const [loading,   setLoading]   = useState(true);
-  const [showForm,  setShowForm]  = useState(false);
- 
-  const loadReviews = async () => {
-    const res = await reviewService.getByBook(bookId, { limit: 5 });
-    setReviews(res.reviews || []);
-    setDist(res.distribution || []);
-    setTotal(res.total || 0);
-  };
- 
+  const [reviews, setReviews] = useState([]);
+  const [dist,    setDist]    = useState([]);
+  const [total,   setTotal]   = useState(0);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    Promise.all([
-      reviewService.getByBook(bookId, { limit: 5 }),
-      reviewService.getMyReview(bookId),             // { review, canReview, borrowId }
-    ])
-      .then(([revRes, myRes]) => {
-        setReviews(revRes.reviews || []);
-        setDist(revRes.distribution || []);
-        setTotal(revRes.total || 0);
- 
-        setCanReview(myRes.canReview ?? false);
-        setBorrowId(myRes.borrowId || null);
- 
-        if (myRes.review) {
-          setMyReview(myRes.review);
-          setRating(myRes.review.rating);
-          setContent(myRes.review.content || "");
-        }
+    reviewService.getByBook(bookId, { limit: 10 })
+      .then(res => {
+        setReviews(res.reviews || []);
+        setDist(res.distribution || []);
+        setTotal(res.total || 0);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [bookId]);
- 
-  const handleSubmit = async () => {
-    if (!rating) { toast.warning("Please select a rating"); return; }
-    setSaving(true);
-    try {
-      const res = await reviewService.upsert({ book_id: bookId, borrow_id: borrowId, rating, content });
-      setMyReview(res.review);
-      setShowForm(false);
-      toast.success("Review saved! Thank you for your feedback.");
-      await loadReviews();
-    } catch (err) {
-      toast.error(err.message || "Failed to save review");
-    } finally {
-      setSaving(false);
-    }
-  };
- 
-  const handleDelete = async () => {
-    if (!myReview) return;
-    try {
-      await reviewService.delete(myReview.id);
-      setMyReview(null);
-      setRating(0);
-      setContent("");
-      toast.success("Review deleted");
-      await loadReviews();
-    } catch (err) {
-      toast.error(err.message || "Failed to delete review");
-    }
-  };
- 
-  if (loading) return <div style={{ padding: "2rem", textAlign: "center" }}><Spin /></div>;
- 
+
+  if (loading) return <div style={{ padding:"2rem", textAlign:"center" }}><Spin /></div>;
+
   return (
     <div className="bc-reviews">
       <div className="bc-reviews-header">
         <h4>Borrower Reviews ({total})</h4>
-        <p>Comments from readers who have borrowed {bookTitle ? `"${bookTitle}"` : "this book"}.</p>
+        <p className="bc-reviews-hint">
+          Only readers who have returned this book can leave reviews.<br />
+          <span>Return a copy → check your notifications to write a review.</span>
+        </p>
       </div>
- 
+
       {/* Rating distribution */}
       {dist.length > 0 && (
         <div className="bc-rating-dist">
@@ -138,96 +76,49 @@ function ReviewSection({ bookId, bookTitle }) {
           })}
         </div>
       )}
- 
-      {/* ── Phần của mình ── */}
-      {myReview ? (
-        // Đã có review → hiển thị + cho phép edit/delete
-        <div className="bc-my-review">
-          <div className="bc-my-review-header">
-            <span className="bc-my-review-label">Your Review</span>
-            <div style={{ display: "flex", gap: "0.8rem" }}>
-              <button className="bc-btn-edit" onClick={() => { setShowForm(true); setMyReview(null); }}>Edit</button>
-              <button className="bc-btn-delete" onClick={handleDelete}>Delete</button>
-            </div>
-          </div>
-          <StarRating value={myReview.rating} readonly size={16} />
-          {myReview.content && <p className="bc-review-content">{myReview.content}</p>}
-        </div>
-      ) : showForm ? (
-        // Form viết review
-        <div className="bc-review-form">
-          <div className="bc-review-form-rating">
-            <span>Your Rating:</span>
-            <StarRating value={rating} onChange={setRating} size={24} />
-          </div>
-          <textarea
-            className="bc-review-textarea"
-            placeholder="Share your thoughts about this book... (optional)"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={3}
-          />
-          <div className="bc-review-form-actions">
-            <button className="bc-btn-cancel" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="bc-btn-submit" onClick={handleSubmit} disabled={saving || !rating}>
-              {saving ? <Spin size="small" /> : "Submit Review"}
-            </button>
-          </div>
-        </div>
-      ) : canReview ? (
-        <button className="bc-write-review-btn" onClick={() => setShowForm(true)}>
-          Write a Review
-        </button>
-      ) : (
-        <div className="bc-review-locked">
-          <span>Locked</span>
-          <p>You can review this book after returning it to the library.</p>
-        </div>
-      )}
- 
+
+      {/* Review list */}
       <div className="bc-review-list">
-        {reviews.filter(r => !myReview || r.id !== myReview.id).length === 0 ? (
+        {reviews.length === 0 ? (
           <div className="bc-review-locked">
-            <p>No borrower reviews yet for this book.</p>
+            <p>No reviews yet. Be the first to review after returning this book!</p>
           </div>
         ) : (
-          reviews
-            .filter(r => !myReview || r.id !== myReview.id)
-            .map(r => (
-              <div key={r.id} className="bc-review-item">
-                <div className="bc-review-meta">
-                  <img
-                    src={r.reviewer_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.reviewer_name}`}
-                    alt={r.reviewer_name}
-                    onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.reviewer_name}`; }}
-                  />
-                  <div>
-                    <div className="bc-review-name">{r.reviewer_name}</div>
-                    <StarRating value={r.rating} readonly size={13} />
-                  </div>
-                  <span className="bc-review-date">
-                    {new Date(r.created_at).toLocaleDateString("vi-VN")}
-                  </span>
+          reviews.map(r => (
+            <div key={r.id} className="bc-review-item">
+              <div className="bc-review-meta">
+                <img
+                  src={r.reviewer_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.reviewer_name}`}
+                  alt={r.reviewer_name}
+                  onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.reviewer_name}`; }}
+                />
+                <div>
+                  <div className="bc-review-name">{r.reviewer_name}</div>
+                  <StarDisplay value={r.rating} size={13} />
                 </div>
-                {r.content && <p className="bc-review-content">{r.content}</p>}
+                <span className="bc-review-date">
+                  {new Date(r.created_at).toLocaleDateString("vi-VN")}
+                </span>
               </div>
-            ))
+              {r.content && <p className="bc-review-content">{r.content}</p>}
+            </div>
+          ))
         )}
       </div>
     </div>
   );
 }
- 
+
 // ── Book Detail Modal ─────────────────────────────────
 function BookDetailModal({ book, onClose }) {
   const toast = useToast();
-  const [tab,        setTab]       = useState("info");
-  const [reserving,  setReserving] = useState(false);
-  const [reserved,   setReserved]  = useState(false);
+  const [tab,       setTab]      = useState("info");
+  const [reserving, setReserving]= useState(false);
+  const [reserved,  setReserved] = useState(false);
 
   if (!book) return null;
   const available = book.available ?? 0;
-  const canReserve = available === 0; // chỉ đặt khi hết sách
+  const canReserve = available === 0;
 
   const handleReserve = async () => {
     setReserving(true);
@@ -265,17 +156,15 @@ function BookDetailModal({ book, onClose }) {
               <span>{book.author || "Unknown author"}</span>
             </div>
 
-            {/* Rating summary */}
             {book.review_count > 0 && (
               <div className="bc-modal-rating">
-                <StarRating value={Math.round(book.avg_rating)} readonly size={16} />
+                <StarDisplay value={Math.round(book.avg_rating)} size={16} />
                 <span className="bc-modal-rating-text">
                   {Number(book.avg_rating).toFixed(1)} ({book.review_count} reviews)
                 </span>
               </div>
             )}
 
-            {/* Availability + Action */}
             <div className="bc-modal-avail">
               <span className={`bc-avail-badge ${available > 0 ? "bc-avail-badge--ok" : "bc-avail-badge--none"}`}>
                 {available > 0 ? `${available} copies available` : "Currently unavailable"}
@@ -288,7 +177,7 @@ function BookDetailModal({ book, onClose }) {
                 onClick={handleReserve}
                 disabled={reserving || reserved}
               >
-                {reserved ? "✓ Reserved" : reserving ? <Spin size="small" /> : <>< SaveOutlined /> Reserve</>}
+                {reserved ? "✓ Reserved" : reserving ? <Spin size="small" /> : <><SaveOutlined /> Reserve</>}
               </button>
             )}
           </div>
@@ -300,7 +189,7 @@ function BookDetailModal({ book, onClose }) {
             Information
           </button>
           <button className={`bc-tab ${tab === "reviews" ? "bc-tab--active" : ""}`} onClick={() => setTab("reviews")}>
-            Borrower Reviews {book.review_count > 0 ? `(${book.review_count})` : ""}
+            Reviews {book.review_count > 0 ? `(${book.review_count})` : ""}
           </button>
         </div>
 
@@ -325,10 +214,10 @@ function BookDetailModal({ book, onClose }) {
             </div>
             <div className="bc-modal-stats">
               {[
-                { num: book.quantity,          lbl: "Total Copies", clr: "#262626" },
-                { num: book.available,         lbl: "Available",    clr: "#52c41a" },
-                { num: book.currently_borrowed,lbl: "Borrowed Now", clr: "#fa8c16" },
-                { num: book.borrowed_all_time, lbl: "All-Time",     clr: "#2c8df4" },
+                { num: book.quantity,           lbl: "Total Copies", clr: "#262626" },
+                { num: book.available,          lbl: "Available",    clr: "#52c41a" },
+                { num: book.currently_borrowed, lbl: "Borrowed Now", clr: "#fa8c16" },
+                { num: book.borrowed_all_time,  lbl: "All-Time",     clr: "#2c8df4" },
               ].map((s, i) => (
                 <div key={i} className="bc-modal-stat">
                   <span style={{ color: s.clr }}>{s.num ?? 0}</span>
@@ -361,7 +250,7 @@ export default function BookCatalog() {
   const [genreOptions, setGenreOptions] = useState([]);
   const [selectedBook, setSelectedBook] = useState(null);
 
-  const searchRef = useRef(""); const genreRef = useRef(""); const sortRef = useRef("created_at__DESC");
+  const searchRef = useRef(""); const genreRef = useRef(""); const sortRef  = useRef("created_at__DESC");
   const pageRef   = useRef(1);  const timer    = useRef(null);
 
   const loadBooks = useCallback(async (p, s, g, sortVal) => {
