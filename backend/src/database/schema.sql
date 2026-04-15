@@ -2,13 +2,11 @@
 -- CREATE DATABASE
 -- # Bước 1: Tạo database trước
 -- psql -U postgres -c "CREATE DATABASE library_management_datn_2025_1;"
-
 -- # Bước 2: Chạy toàn bộ schema (bỏ qua dòng CREATE DATABASE trong file)
 -- psql -U postgres -d library_management_datn_2025_1 -f backend/src/config/schema.sql
 -- ==============================
 CREATE DATABASE library_management_datn_2025_1;
 
--- Sau khi chạy lệnh trên, kết nối vào DB rồi chạy tiếp phần dưới:
 -- ==============================
 -- USERS
 -- ==============================
@@ -27,6 +25,7 @@ CREATE TABLE users (
     refresh_token   TEXT,                                 -- lưu refresh token (NULL khi logout)
     created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+    favorite_genres TEXT[]        DEFAULT '{}'        -- mảng lưu các thể loại yêu thích (VD: {'Fiction', 'Science'}) 
 );
 
 
@@ -52,7 +51,9 @@ CREATE TABLE books (
     borrowed_all_time   INT          NOT NULL DEFAULT 0,  -- tổng lượt mượn từ trước đến nay
     description         TEXT,
     created_at          TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+    updated_at          TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    avg_rating      NUMERIC(3,2)  NOT NULL DEFAULT 0,    -- điểm đánh giá trung bình từ reviews
+    review_count    INT           NOT NULL DEFAULT 0     -- tổng số review đã viết
 );
 
 
@@ -175,6 +176,67 @@ CREATE TABLE notifications (
         ON DELETE CASCADE
 );
 
+-- ==============================
+-- BOOK RESERVATIONS
+-- ==============================
+
+CREATE TABLE book_reservations (
+    id           SERIAL        PRIMARY KEY,
+    user_id      INT           NOT NULL,
+    book_id      VARCHAR(10)   NOT NULL,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                     CHECK (status IN (
+                         'pending',    -- đang chờ sách available
+                         'ready',      -- sách đã available, chờ đến lấy
+                         'fulfilled',  -- đã đến lấy & mượn thành công
+                         'cancelled',  -- user tự hủy
+                         'expired'     -- quá hạn không đến lấy
+                     )),
+    reserved_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Khi status = 'ready': expires_at = ready_at + 3 ngày
+    expires_at   TIMESTAMP,
+    notified_at  TIMESTAMP,   -- thời điểm đã gửi thông báo "sách sẵn sàng"
+    notes        TEXT,
+ 
+    CONSTRAINT fk_res_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_res_book
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+ 
+    -- 1 user chỉ có 1 reservation pending/ready cho 1 sách tại 1 thời điểm
+    CONSTRAINT uq_active_reservation
+        UNIQUE NULLS NOT DISTINCT (user_id, book_id, status)
+);
+ 
+CREATE INDEX idx_res_user_id   ON book_reservations(user_id);
+CREATE INDEX idx_res_book_id   ON book_reservations(book_id);
+CREATE INDEX idx_res_status    ON book_reservations(status);
+ 
+-- ==============================
+-- BOOK REVIEWS
+-- ==============================
+
+CREATE TABLE book_reviews (
+    id          SERIAL        PRIMARY KEY,
+    user_id     INT           NOT NULL,
+    book_id     VARCHAR(10)   NOT NULL,
+    borrow_id   INT,          -- gắn với lượt mượn cụ thể (nullable: review manual)
+    rating      SMALLINT      NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    content     TEXT,         -- nội dung review (tùy chọn)
+    is_approved BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+ 
+    CONSTRAINT fk_rev_user
+        FOREIGN KEY (user_id)  REFERENCES users(id)    ON DELETE CASCADE,
+    CONSTRAINT fk_rev_book
+        FOREIGN KEY (book_id)  REFERENCES books(id)    ON DELETE CASCADE,
+    CONSTRAINT fk_rev_borrow
+        FOREIGN KEY (borrow_id) REFERENCES borrows(id) ON DELETE SET NULL,
+ 
+    -- 1 user chỉ review 1 sách 1 lần
+    CONSTRAINT uq_user_book_review UNIQUE (user_id, book_id)
+);
 
 -- ==============================
 -- INDEXES (Performance)
@@ -189,7 +251,16 @@ CREATE INDEX idx_notifications_user_id  ON notifications(user_id);
 CREATE INDEX idx_messages_receiver_id   ON messages(receiver_id);
 -- Index cho refresh_token để tìm kiếm nhanh khi verify
 CREATE INDEX idx_users_refresh_token    ON users(refresh_token);
-
+CREATE INDEX idx_rev_book_id ON book_reviews(book_id);
+CREATE INDEX idx_rev_user_id ON book_reviews(user_id);
+-- Tăng tốc query getConversations
+CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver
+    ON messages(sender_id, receiver_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at
+    ON messages(created_at DESC);
+ 
+CREATE INDEX IF NOT EXISTS idx_notif_user_read
+    ON notifications(user_id, is_read);
 
 -- ==============================
 -- AUTO-UPDATE updated_at TRIGGER
@@ -209,6 +280,7 @@ CREATE TRIGGER trg_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- Trigger cập nhật updated_at
 CREATE TRIGGER trg_books_updated_at
     BEFORE UPDATE ON books
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -221,49 +293,37 @@ CREATE TRIGGER trg_borrows_updated_at
     BEFORE UPDATE ON borrows
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- Trigger cập nhật updated_at
+CREATE TRIGGER trg_reviews_updated_at
+    BEFORE UPDATE ON book_reviews
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- ==============================
--- SEED DATA MẪU (tuỳ chọn)
--- ==============================
-
--- Tài khoản staff mẫu (password: Admin@123)
-INSERT INTO users (full_name, email, password, role, status)
-VALUES (
-    'Admin Library',
-    'admin@library.com',
-    '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- bcrypt của 'Admin@123'
-    'staff',
-    'active'
-);
-
--- Tài khoản reader mẫu (password: Reader@123)
-INSERT INTO users (full_name, email, password, role, status)
-VALUES (
-    'Nguyen Van A',
-    'reader@library.com',
-    '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- bcrypt của 'Reader@123'
-    'reader',
-    'active'
-);
-
--- Sách mẫu
-INSERT INTO books (id, isbn, title, author, genre, publisher, publish_year, language, pages, location, quantity, available)
-VALUES
-    ('BK001', '978-0-7432-7356-5', 'The Great Gatsby',           'F. Scott Fitzgerald', 'Fiction',    'Scribner',          1925, 'English', 180, '1-1-1', 3, 3),
-    ('BK002', '978-0-06-112008-4', 'To Kill a Mockingbird',      'Harper Lee',          'Fiction',    'HarperCollins',     1960, 'English', 281, '1-1-2', 2, 2),
-    ('BK003', '978-0-452-28423-4', '1984',                       'George Orwell',       'Dystopian',  'Penguin Books',     1949, 'English', 328, '1-2-1', 4, 4),
-    ('BK004', '978-0-14-143951-8', 'Pride and Prejudice',        'Jane Austen',         'Romance',    'Penguin Classics',  1813, 'English', 432, '1-2-2', 2, 2),
-    ('BK005', '978-0-7432-7357-2', 'The Catcher in the Rye',     'J.D. Salinger',       'Fiction',    'Little, Brown',     1951, 'English', 224, '1-3-1', 3, 3);
-
--- Book copies mẫu cho BK001 (3 bản)
-INSERT INTO book_copies (book_id, barcode, condition, status)
-VALUES
-    ('BK001', 'BC001-001', 'good',      'available'),
-    ('BK001', 'BC001-002', 'good',      'available'),
-    ('BK001', 'BC001-003', 'excellent', 'available');
-
--- Book copies mẫu cho BK002 (2 bản)
-INSERT INTO book_copies (book_id, barcode, condition, status)
-VALUES
-    ('BK002', 'BC002-001', 'good', 'available'),
-    ('BK002', 'BC002-002', 'fair', 'available');
+CREATE OR REPLACE FUNCTION update_book_rating()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_book_id VARCHAR(10);
+BEGIN
+    -- Xác định book_id từ NEW hoặc OLD
+    v_book_id := COALESCE(NEW.book_id, OLD.book_id);
+ 
+    UPDATE books
+    SET
+        avg_rating   = COALESCE((
+            SELECT ROUND(AVG(rating)::NUMERIC, 2)
+            FROM book_reviews
+            WHERE book_id = v_book_id AND is_approved = TRUE
+        ), 0),
+        review_count = (
+            SELECT COUNT(*)
+            FROM book_reviews
+            WHERE book_id = v_book_id AND is_approved = TRUE
+        )
+    WHERE id = v_book_id;
+ 
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+ 
+CREATE TRIGGER trg_update_book_rating
+    AFTER INSERT OR UPDATE OR DELETE ON book_reviews
+    FOR EACH ROW EXECUTE FUNCTION update_book_rating();

@@ -66,7 +66,7 @@ async updateStatus(req, res) {
     const label = { active: 'activated', suspended: 'suspended', banned: 'banned' };
     return res.json({ message: `Reader ${label[status]}`, reader });
   } catch (err) {
-    // ✅ Log chi tiết
+    //  Log chi tiết
     console.error('=== updateStatus ERROR ===');
     console.error('Params:', req.params);
     console.error('Body:',   req.body);

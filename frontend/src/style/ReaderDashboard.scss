@@ -1,0 +1,264 @@
+// frontend/src/style/ReaderDashboard.scss
+.reader-dashboard {
+  padding: 3.2rem;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+// ── Hero Banner ───────────────────────────────────────
+.rd-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2.4rem 3.2rem;
+  background: linear-gradient(135deg, #2c8df4 0%, #4facfe 100%);
+  border-radius: 2rem;
+  margin-bottom: 2.4rem;
+  color: #fff;
+  gap: 2rem;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  &__avatar {
+    width: 6.4rem;
+    height: 6.4rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 0.3rem solid rgba(255,255,255,0.7);
+    box-shadow: 0 0.4rem 1.2rem rgba(0,0,0,0.2);
+    flex-shrink: 0;
+  }
+
+  &__name {
+    margin: 0 0 0.4rem;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  &__sub {
+    margin: 0;
+    font-size: 1.4rem;
+    color: rgba(255,255,255,0.85);
+  }
+
+  &__fine-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 1.6rem;
+    background: rgba(255,255,255,0.2);
+    border: 0.1rem solid rgba(255,255,255,0.4);
+    border-radius: 1rem;
+    font-size: 1.35rem;
+    color: #fff;
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+
+    strong { font-weight: 700; }
+  }
+}
+
+// ── Stat Cards ────────────────────────────────────────
+.rd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5rem;
+  margin-bottom: 2.4rem;
+
+  @media (max-width: 90rem) { grid-template-columns: repeat(2, 1fr); }
+}
+
+.rd-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1.6rem;
+  border-radius: 1.6rem;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover { transform: translateY(-0.3rem); box-shadow: 0 0.8rem 2.4rem rgba(0,0,0,0.1); }
+}
+
+.rd-stat-icon { font-size: 2.8rem; margin-bottom: 1rem; }
+.rd-stat-num  { font-size: 3.2rem; font-weight: 700; color: #262626; line-height: 1; margin-bottom: 0.4rem; }
+.rd-stat-lbl  { font-size: 1.25rem; color: #353434; font-weight: 500; }
+
+// ── Body (2-col) ─────────────────────────────────────
+.rd-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+
+  @media (max-width: 90rem) { grid-template-columns: 1fr; }
+}
+
+// ── Section ───────────────────────────────────────────
+.rd-section {
+  background: #fff;
+  border-radius: 1.6rem;
+  padding: 2rem;
+  box-shadow: 0 0.2rem 0.8rem rgba(0,0,0,0.06);
+}
+
+.rd-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.6rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #262626;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+}
+
+.rd-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.3rem;
+  color: #2c8df4;
+  font-weight: 500;
+  &:hover { text-decoration: underline; }
+}
+
+// ── Empty ─────────────────────────────────────────────
+.rd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3.2rem;
+  color: #bfbfbf;
+  gap: 0.8rem;
+  .anticon { font-size: 3.2rem; }
+  p { font-size: 1.4rem; margin: 0; }
+}
+
+// ── Borrow List ───────────────────────────────────────
+.rd-borrow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.rd-borrow-item {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.2rem;
+  background: #fafafa;
+  border-radius: 1rem;
+  border: 0.1rem solid #f0f0f0;
+  transition: all 0.15s;
+
+  &--overdue {
+    background: #fff8f8;
+    border-color: #ffa39e;
+  }
+
+  img {
+    width: 4rem;
+    height: 5.6rem;
+    object-fit: cover;
+    border-radius: 0.6rem;
+    flex-shrink: 0;
+    background: #f0f0f0;
+  }
+}
+
+.rd-borrow-info { flex: 1; min-width: 0; }
+.rd-borrow-title  { font-size: 1.4rem; font-weight: 600; color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-borrow-author { font-size: 1.2rem; color: #8c8c8c; margin: 0.2rem 0; }
+.rd-borrow-dates  { font-size: 1.25rem; color: #595959; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+
+.rd-days-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.8rem;
+  background: #e6f4ff;
+  color: #0958d9;
+  border-radius: 2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+
+  &--late {
+    background: #fff1f0;
+    color: #cf1322;
+  }
+}
+
+.rd-fine-tag {
+  font-size: 1.2rem;
+  color: #cf1322;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+.rd-status-dot {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 1rem;
+  border-radius: 2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  border: 0.1rem solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// ── Top Books ─────────────────────────────────────────
+.rd-top-books {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.rd-top-book {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1rem 1.2rem;
+  background: #fafafa;
+  border-radius: 1rem;
+  transition: all 0.15s;
+  &:hover { background: #f0f0f0; }
+
+  img {
+    width: 3.8rem;
+    height: 5.2rem;
+    object-fit: cover;
+    border-radius: 0.4rem;
+    flex-shrink: 0;
+    box-shadow: 0 0.2rem 0.8rem rgba(0,0,0,0.1);
+    background: #f0f0f0;
+  }
+}
+
+.rd-rank {
+  width: 2.4rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: #d9d9d9;
+
+  &.rank-1 { color: #faad14; }
+  &.rank-2 { color: #8c8c8c; }
+  &.rank-3 { color: #ad6800; }
+}
+
+.rd-top-book-info { flex: 1; min-width: 0; }
+.rd-top-book-title  { font-size: 1.4rem; font-weight: 600; color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-top-book-author { font-size: 1.2rem; color: #8c8c8c; }
+.rd-top-book-loans  { font-size: 1.2rem; color: #2c8df4; font-weight: 500; }

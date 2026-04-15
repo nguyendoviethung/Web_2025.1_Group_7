@@ -1,0 +1,450 @@
+// frontend/src/style/BookCatalog.scss
+.book-catalog {
+  padding: 3.2rem;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+// ── Header ────────────────────────────────────────────
+.bc-header {
+  margin-bottom: 2.4rem;
+  h1 { font-size: 2.8rem; font-weight: 700; color: #262626; margin: 0 0 0.4rem; }
+  p  { font-size: 1.4rem; color: #8c8c8c; margin: 0; }
+}
+
+// ── Filters ───────────────────────────────────────────
+.bc-filters {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 2.4rem;
+  flex-wrap: wrap;
+}
+
+.bc-search {
+  position: relative;
+  flex: 1;
+  min-width: 22rem;
+  max-width: 36rem;
+
+  .bc-search-icon {
+    position: absolute;
+    left: 1.2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8c8c8c;
+    font-size: 1.6rem;
+  }
+
+  input {
+    width: 100%;
+    height: 4rem;
+    padding: 0 1.2rem 0 3.6rem;
+    border: 0.1rem solid #e8e8e8;
+    border-radius: 0.8rem;
+    font-size: 1.4rem;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s;
+
+    &:focus { border-color: #2c8df4; box-shadow: 0 0 0 0.2rem rgba(44,141,244,0.1); }
+    &::placeholder { color: #bfbfbf; }
+  }
+}
+
+.bc-reset {
+  height: 4rem;
+  padding: 0 1.4rem;
+  background: #fff;
+  color: #ff4d4f;
+  border: 0.1rem solid #ff4d4f;
+  border-radius: 0.8rem;
+  font-size: 1.3rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: #fff1f0; }
+}
+
+// ── Loading / Empty ───────────────────────────────────
+.bc-loading {
+  display: flex; justify-content: center; padding: 6rem;
+}
+
+.bc-empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6rem; gap: 1.2rem; color: #bfbfbf;
+  .anticon { font-size: 4rem; }
+  p { font-size: 1.5rem; margin: 0; }
+}
+
+// ── Book Grid ─────────────────────────────────────────
+.bc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 2rem;
+  margin-bottom: 2.4rem;
+}
+
+.bc-card {
+  background: #fff;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0.2rem 0.8rem rgba(0,0,0,0.07);
+  padding-bottom: 1.2rem;
+
+  &:hover {
+    transform: translateY(-0.4rem);
+    box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.13);
+  }
+}
+
+.bc-card-cover-wrap {
+  position: relative;
+  width: 100%;
+  height: 21rem;
+  overflow: hidden;
+}
+
+.bc-card-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+  .bc-card:hover & { transform: scale(1.04); }
+}
+
+.bc-card-avail {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+
+  &--ok   { background: #f6ffed; color: #389e0d; }
+  &--none { background: #fff1f0; color: #cf1322; }
+}
+
+.bc-card-genre {
+  display: inline-block;
+  margin: 1rem 1.2rem 0.4rem;
+  padding: 0.2rem 0.8rem;
+  background: #e6f4ff;
+  color: #2c8df4;
+  border-radius: 2rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.bc-card-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #262626;
+  padding: 0 1.2rem;
+  margin: 0 0 0.4rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bc-card-author {
+  font-size: 1.2rem;
+  color: #8c8c8c;
+  padding: 0 1.2rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ── Pagination ────────────────────────────────────────
+.bc-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 2.4rem;
+}
+
+.bc-page-btn {
+  width: 3.6rem;
+  height: 3.6rem;
+  border: 0.1rem solid #e8e8e8;
+  border-radius: 0.8rem;
+  background: #fff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+
+  &:hover:not(:disabled) { border-color: #2c8df4; color: #2c8df4; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &--active  { background: #2c8df4; color: #fff; border-color: #2c8df4; font-weight: 600; }
+}
+
+// ── Detail Modal ──────────────────────────────────────
+.bc-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 1000; display: flex; align-items: center;
+  justify-content: center; padding: 2rem;
+  animation: bcFade 0.18s ease;
+  @keyframes bcFade { from{opacity:0} to{opacity:1} }
+}
+
+.bc-modal {
+  background: #fff;
+  border-radius: 1.6rem;
+  max-width: 62rem;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 2.4rem;
+  position: relative;
+  animation: bcSlide 0.2s ease;
+  @keyframes bcSlide {
+    from { opacity:0; transform:translateY(1.2rem) scale(0.98); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+}
+
+.bc-modal-close {
+  position: absolute; top: 1.6rem; right: 1.6rem;
+  width: 3.2rem; height: 3.2rem; border: none; background: #f5f5f5;
+  border-radius: 0.8rem; cursor: pointer; font-size: 1.4rem;
+  display: flex; align-items: center; justify-content: center; color: #666;
+  &:hover { background: #ff4d4f; color: #fff; }
+}
+
+.bc-modal-hero {
+  display: flex; gap: 2rem; margin-bottom: 2rem;
+}
+
+.bc-modal-cover {
+  width: 10rem; height: 14rem; object-fit: cover;
+  border-radius: 0.8rem; flex-shrink: 0;
+  box-shadow: 0 0.4rem 1.2rem rgba(0,0,0,0.15);
+  background: #f0f0f0;
+}
+
+.bc-modal-meta { flex: 1; }
+
+.bc-genre-badge {
+  display: inline-block; padding: 0.3rem 1rem;
+  background: #e6f4ff; color: #2c8df4; border-radius: 2rem;
+  font-size: 1.2rem; font-weight: 500; margin-bottom: 0.8rem;
+}
+
+.bc-modal-title {
+  font-size: 2rem; font-weight: 700; color: #262626;
+  margin: 0 0 0.8rem; line-height: 1.3;
+}
+
+.bc-modal-author {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem;
+  font-size: 1.4rem; color: #595959;
+}
+
+.bc-author-avatar {
+  width: 3.2rem; height: 3.2rem; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0; background: #f0f0f0;
+}
+
+.bc-avail-badge {
+  display: inline-flex; align-items: center;
+  padding: 0.4rem 1.2rem; border-radius: 2rem;
+  font-size: 1.3rem; font-weight: 600;
+
+  &--ok   { background: #f6ffed; color: #389e0d; }
+  &--none { background: #fff1f0; color: #cf1322; }
+}
+
+.bc-modal-desc {
+  font-size: 1.35rem; color: #595959; line-height: 1.75;
+  padding: 1.2rem 1.4rem; background: #fafafa;
+  border-left: 0.3rem solid #2c8df4; border-radius: 0 0.8rem 0.8rem 0;
+  margin-bottom: 2rem;
+}
+
+.bc-modal-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;
+}
+
+.bc-modal-info-item {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1rem 1.2rem; background: #fafafa; border-radius: 0.8rem;
+  font-size: 1.3rem;
+
+  > .anticon { color: #2c8df4; margin-top: 0.2rem; font-size: 1.4rem; flex-shrink: 0; }
+  label { display: block; font-size: 1.1rem; color: #9e9e9e; text-transform: uppercase; letter-spacing: 0.05rem; margin-bottom: 0.2rem; }
+  span  { color: #333; font-weight: 500; }
+}
+
+.bc-modal-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+}
+
+.bc-modal-stat {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 1.2rem; background: #fafafa; border-radius: 1rem; text-align: center;
+
+  span { font-size: 2.4rem; font-weight: 700; line-height: 1; }
+  small { font-size: 1.1rem; color: #8c8c8c; margin-top: 0.4rem; }
+}
+.bc-reserve-btn {
+  display: inline-flex; align-items: center; gap: 0.8rem;
+  margin-top: 1.2rem; padding: 0.8rem 1.6rem;
+  background: #fff7e6; color: #d46b08;
+  border: 0.1rem solid #ffd591; border-radius: 0.8rem;
+  font-size: 1.3rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+ 
+  &:hover:not(:disabled) { background: #ffe7ba; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+ 
+  &--done {
+    background: #f6ffed; color: #389e0d; border-color: #b7eb8f;
+  }
+}
+ 
+// ── Tabs ──────────────────────────────────────────────
+.bc-modal-tabs {
+  display: flex; gap: 0; border-bottom: 0.1rem solid #f0f0f0;
+  margin: 1.6rem 0 0;
+}
+ 
+.bc-tab {
+  padding: 0.8rem 2rem; background: none; border: none; border-bottom: 0.2rem solid transparent;
+  font-size: 1.4rem; font-weight: 500; color: #8c8c8c; cursor: pointer; transition: all 0.15s;
+ 
+  &:hover  { color: #262626; }
+  &--active { color: #2c8df4; border-bottom-color: #2c8df4; }
+}
+ 
+// ── Modal rating ──────────────────────────────────────
+.bc-modal-rating {
+  display: flex; align-items: center; gap: 0.8rem; margin: 0.8rem 0;
+}
+ 
+.bc-modal-rating-text { font-size: 1.3rem; color: #8c8c8c; }
+ 
+// ── Card rating ───────────────────────────────────────
+.bc-card-rating {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0 1.2rem 1rem; font-size: 1.25rem; color: #595959;
+}
+ 
+.bc-card-star { color: #faad14; }
+.bc-card-rating-count { color: #bfbfbf; }
+ 
+// ── Reviews section ───────────────────────────────────
+.bc-reviews { padding-top: 1.6rem; }
+ 
+.bc-reviews-header {
+  margin-bottom: 1.2rem;
+  h4 { margin: 0; font-size: 1.6rem; font-weight: 600; color: #262626; }
+}
+ 
+.bc-rating-dist {
+  display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.6rem;
+}
+ 
+.bc-rating-row {
+  display: flex; align-items: center; gap: 1rem; font-size: 1.25rem;
+}
+ 
+.bc-rating-star { width: 4rem; flex-shrink: 0; color: #595959; text-align: right; }
+ 
+.bc-rating-bar {
+  flex: 1; height: 0.8rem; background: #f0f0f0; border-radius: 0.4rem; overflow: hidden;
+}
+ 
+.bc-rating-fill { height: 100%; background: #faad14; border-radius: 0.4rem; transition: width 0.3s; }
+ 
+.bc-rating-count { width: 3rem; flex-shrink: 0; color: #8c8c8c; text-align: right; }
+ 
+.bc-write-review-btn {
+  display: block; width: 100%; padding: 1rem;
+  background: #f0f7ff; border: 0.1rem dashed #91caff; border-radius: 0.8rem;
+  font-size: 1.4rem; color: #2c8df4; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; margin-bottom: 1.6rem;
+  &:hover { background: #e6f4ff; }
+}
+ 
+.bc-review-form {
+  background: #fafafa; border-radius: 1rem; padding: 1.6rem; margin-bottom: 1.6rem;
+}
+ 
+.bc-review-form-rating {
+  display: flex; align-items: center; gap: 1.2rem;
+  font-size: 1.4rem; font-weight: 500; color: #555; margin-bottom: 1.2rem;
+}
+ 
+.bc-review-textarea {
+  width: 100%; padding: 1rem 1.2rem;
+  border: 0.1rem solid #d9d9d9; border-radius: 0.8rem;
+  font-size: 1.35rem; font-family: inherit; outline: none; resize: vertical;
+  transition: border-color 0.15s;
+  &:focus { border-color: #2c8df4; }
+}
+ 
+.bc-review-form-actions {
+  display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1rem;
+}
+ 
+.bc-btn-cancel {
+  padding: 0.7rem 1.6rem; border: 0.1rem solid #d9d9d9; border-radius: 0.8rem;
+  background: #fff; font-size: 1.35rem; cursor: pointer; font-family: inherit;
+  &:hover { background: #f5f5f5; }
+}
+ 
+.bc-btn-submit {
+  padding: 0.7rem 1.6rem; background: #2c8df4; color: #fff;
+  border: none; border-radius: 0.8rem; font-size: 1.35rem; font-family: inherit;
+  cursor: pointer; &:hover { background: #0958d9; } &:disabled { opacity: 0.5; }
+}
+ 
+.bc-my-review {
+  background: #f6ffed; border: 0.1rem solid #b7eb8f; border-radius: 0.8rem;
+  padding: 1.2rem; margin-bottom: 1.6rem;
+}
+ 
+.bc-my-review-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem;
+}
+ 
+.bc-my-review-label { font-size: 1.3rem; font-weight: 600; color: #389e0d; }
+ 
+.bc-btn-edit {
+  padding: 0.3rem 0.8rem; border: 0.1rem solid #d9d9d9; border-radius: 0.6rem;
+  background: #fff; font-size: 1.2rem; cursor: pointer;
+}
+ 
+.bc-btn-delete {
+  padding: 0.3rem 0.8rem; border: 0.1rem solid #ffa39e; border-radius: 0.6rem;
+  background: #fff; color: #ff4d4f; font-size: 1.2rem; cursor: pointer;
+}
+ 
+.bc-review-content {
+  font-size: 1.3rem; color: #595959; line-height: 1.6; margin: 0.6rem 0 0;
+}
+ 
+.bc-review-list { display: flex; flex-direction: column; gap: 1.2rem; }
+ 
+.bc-review-item {
+  padding: 1.2rem; background: #fafafa; border-radius: 0.8rem; border: 0.1rem solid #f0f0f0;
+}
+ 
+.bc-review-meta {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 0.6rem;
+ 
+  img {
+    width: 3.2rem; height: 3.2rem; border-radius: 50%;
+    object-fit: cover; background: #f0f0f0; flex-shrink: 0;
+  }
+}
+ 
+.bc-review-name { font-size: 1.3rem; font-weight: 600; color: #262626; }
+ 
+.bc-review-date { margin-left: auto; font-size: 1.1rem; color: #bfbfbf; flex-shrink: 0; }

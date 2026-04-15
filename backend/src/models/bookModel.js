@@ -1,69 +1,107 @@
 import getPool from '../config/db.js';
 
+const REVIEW_STATS_JOIN = `
+  LEFT JOIN (
+    SELECT
+      r.book_id,
+      ROUND(AVG(r.rating)::NUMERIC, 2) AS avg_rating,
+      COUNT(*)::INT AS review_count
+    FROM book_reviews r
+    WHERE r.is_approved = TRUE
+      AND EXISTS (
+        SELECT 1
+        FROM borrows br
+        JOIN book_copies bc ON bc.id = br.book_copy_id
+        WHERE br.user_id = r.user_id
+          AND bc.book_id = r.book_id
+          AND br.status = 'returned'
+      )
+    GROUP BY r.book_id
+  ) review_stats ON review_stats.book_id = books.id
+`;
+
+const SORT_COLUMNS = {
+  title: 'books.title',
+  author: 'books.author',
+  genre: 'books.genre',
+  quantity: 'books.quantity',
+  available: 'books.available',
+  borrowed_all_time: 'books.borrowed_all_time',
+  created_at: 'books.created_at',
+  publish_year: 'books.publish_year',
+  avg_rating: 'avg_rating',
+  review_count: 'review_count',
+};
+
 const BookModel = {
+  async findAll({ search = '', genre = '', page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'DESC' }) {
+    const offset = (Number(page) - 1) * Number(limit);
+    const params = [];
+    const where = [];
 
-  // Lấy danh sách sách với phân trang, tìm kiếm, lọc thể loại, sắp xếp
-async findAll({ search = '', genre = '', page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'DESC' }) {
-  const offset = (Number(page) - 1) * Number(limit);
-  const params = [];
-  const where  = [];
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(books.title ILIKE $${params.length} OR books.author ILIKE $${params.length})`);
+    }
 
-  if (search) {
-    params.push(`%${search}%`);
-    where.push(`(title ILIKE $${params.length} OR author ILIKE $${params.length})`);
-  }
+    if (genre) {
+      params.push(genre);
+      where.push(`books.genre = $${params.length}`);
+    }
 
-  if (genre) {
-    params.push(genre);
-    where.push(`genre = $${params.length}`);
-  }
+    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const safeSortBy = SORT_COLUMNS[sortBy] || 'books.created_at';
+    const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-  const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const countRes = await getPool().query(
+      `SELECT COUNT(*) FROM books ${whereSQL}`,
+      params
+    );
 
-  // Whitelist các cột được phép sort — tránh SQL injection
-  const allowedSort = ['title', 'author', 'genre', 'quantity', 'available', 'borrowed_all_time', 'created_at', 'publish_year'];
-  const safeSortBy    = allowedSort.includes(sortBy) ? sortBy : 'created_at';
-  const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    params.push(Number(limit), offset);
 
-  const countRes = await getPool().query(
-    `SELECT COUNT(*) FROM books ${whereSQL}`,
-    params
-  );
+    const dataRes = await getPool().query(
+      `SELECT
+         books.*,
+         COALESCE(review_stats.avg_rating, 0)   AS avg_rating,
+         COALESCE(review_stats.review_count, 0) AS review_count
+       FROM books
+       ${REVIEW_STATS_JOIN}
+       ${whereSQL}
+       ORDER BY ${safeSortBy} ${safeSortOrder}
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
 
-  params.push(Number(limit), offset);
+    return {
+      books: dataRes.rows,
+      total: Number(countRes.rows[0].count),
+    };
+  },
 
-  const dataRes = await getPool().query(
-    `SELECT * FROM books ${whereSQL}
-     ORDER BY ${safeSortBy} ${safeSortOrder}
-     LIMIT $${params.length - 1} OFFSET $${params.length}`,
-    params
-  );
-
-  return {
-    books: dataRes.rows,
-    total: Number(countRes.rows[0].count),
-  };
-},
-
-// Lấy danh sách thể loại sách
   async getGenres() {
     return await getPool().query(`
       SELECT DISTINCT genre
       FROM books
       WHERE genre IS NOT NULL AND genre != ''
       ORDER BY genre ASC
-    `)
+    `);
   },
-    
-  //  Tìm sách theo id
+
   async findById(id) {
     const result = await getPool().query(
-      'SELECT * FROM books WHERE id = $1', [id]
+      `SELECT
+         books.*,
+         COALESCE(review_stats.avg_rating, 0)   AS avg_rating,
+         COALESCE(review_stats.review_count, 0) AS review_count
+       FROM books
+       ${REVIEW_STATS_JOIN}
+       WHERE books.id = $1`,
+      [id]
     );
     return result.rows[0] || null;
   },
 
-  // Thêm sách mới
   async create(data) {
     const {
       id, isbn, title, book_cover, author, author_avatar,
@@ -86,7 +124,6 @@ async findAll({ search = '', genre = '', page = 1, limit = 10, sortBy = 'created
     return result.rows[0];
   },
 
-  // Cập nhật sách
   async update(id, data) {
     const {
       title, book_cover, author, author_avatar, genre,
@@ -121,71 +158,61 @@ async findAll({ search = '', genre = '', page = 1, limit = 10, sortBy = 'created
     return result.rows;
   },
 
-  // Thêm nhiều copies cùng lúc
-async addCopiesBulk({ book_id, quantity, condition, notes }) {
-  const qty = Number(quantity);
-  if (qty < 1) throw new Error('Quantity must be at least 1');
+  async addCopiesBulk({ book_id, quantity, condition, notes }) {
+    const qty = Number(quantity);
+    if (qty < 1) throw new Error('Quantity must be at least 1');
 
-  // Lấy barcode lớn nhất hiện tại của book này
-  // VD: BK001-005 → lấy số 5
-  const existRes = await getPool().query(
-    `SELECT barcode
-     FROM book_copies
-     WHERE book_id = $1
-     ORDER BY barcode DESC
-     LIMIT 1`,
-    [book_id]
-  );
-
-  let lastIndex = 0;
-
-  if (existRes.rows.length > 0) {
-    const lastBarcode = existRes.rows[0].barcode;
-    // Parse số cuối sau dấu '-'
-    // VD: "BK001-005" → "005" → 5
-    const parts = lastBarcode.split('-');
-    const lastNum = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(lastNum)) {
-      lastIndex = lastNum;
-    }
-  }
-
-  // Generate barcodes mới với format 3 chữ số
-  // VD: lastIndex=5, qty=3 → BK001-006, BK001-007, BK001-008
-  const values       = [];
-  const placeholders = [];
-
-  for (let i = 0; i < qty; i++) {
-    const nextIndex = lastIndex + i + 1;
-    // Pad 3 chữ số: 1→001, 12→012, 123→123
-    const barcode = `${book_id}-${String(nextIndex).padStart(3, '0')}`;
-    const base    = i * 4;
-    placeholders.push(
-      `($${base + 1}, $${base + 2}, $${base + 3}, 'available', $${base + 4})`
+    const existRes = await getPool().query(
+      `SELECT barcode
+       FROM book_copies
+       WHERE book_id = $1
+       ORDER BY barcode DESC
+       LIMIT 1`,
+      [book_id]
     );
-    values.push(book_id, barcode, condition || 'good', notes || null);
-  }
 
-  const result = await getPool().query(
-    `INSERT INTO book_copies (book_id, barcode, condition, status, notes)
-     VALUES ${placeholders.join(', ')}
-     RETURNING *`,
-    values
-  );
+    let lastIndex = 0;
 
-  // Cập nhật quantity + available
-  await getPool().query(
-    `UPDATE books
-     SET quantity  = quantity  + $1,
-         available = available + $1
-     WHERE id = $2`,
-    [qty, book_id]
-  );
+    if (existRes.rows.length > 0) {
+      const lastBarcode = existRes.rows[0].barcode;
+      const parts = lastBarcode.split('-');
+      const lastNum = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(lastNum)) {
+        lastIndex = lastNum;
+      }
+    }
 
-  return result.rows;
-},
+    const values = [];
+    const placeholders = [];
 
-// Cập nhật 1 copy
+    for (let i = 0; i < qty; i++) {
+      const nextIndex = lastIndex + i + 1;
+      const barcode = `${book_id}-${String(nextIndex).padStart(3, '0')}`;
+      const base = i * 4;
+      placeholders.push(
+        `($${base + 1}, $${base + 2}, $${base + 3}, 'available', $${base + 4})`
+      );
+      values.push(book_id, barcode, condition || 'good', notes || null);
+    }
+
+    const result = await getPool().query(
+      `INSERT INTO book_copies (book_id, barcode, condition, status, notes)
+       VALUES ${placeholders.join(', ')}
+       RETURNING *`,
+      values
+    );
+
+    await getPool().query(
+      `UPDATE books
+       SET quantity  = quantity  + $1,
+           available = available + $1
+       WHERE id = $2`,
+      [qty, book_id]
+    );
+
+    return result.rows;
+  },
+
   async updateCopy(copyId, { status, condition, notes }) {
     const result = await getPool().query(`
       UPDATE book_copies
@@ -195,7 +222,6 @@ async addCopiesBulk({ book_id, quantity, condition, notes }) {
     return result.rows[0];
   },
 
-  // Xóa 1 copy
   async deleteCopy(copyId) {
     const res = await getPool().query(
       'SELECT book_id FROM book_copies WHERE id = $1', [copyId]

@@ -229,12 +229,15 @@ async checkReader(studentId) {
     const client = await getPool().connect();
     try {
       await client.query('BEGIN');
+      const returnedItems = [];
 
       for (const id of borrowIds) {
         const br = await client.query(
-          `SELECT br.id, br.status, br.book_copy_id, bc.book_id
+          `SELECT br.id, br.status, br.book_copy_id, br.user_id,
+                  bc.book_id, bk.title AS book_title
            FROM borrows br
            JOIN book_copies bc ON bc.id = br.book_copy_id
+           JOIN books bk ON bk.id = bc.book_id
            WHERE br.id = $1 FOR UPDATE`,
           [id]
         );
@@ -242,7 +245,7 @@ async checkReader(studentId) {
         if (!br.rows[0]) throw new Error(`Borrow #${id} not found`);
         if (br.rows[0].status === 'returned') throw new Error(`Borrow #${id} already returned`);
 
-        const { book_copy_id, book_id } = br.rows[0];
+        const { book_copy_id, book_id, user_id, book_title } = br.rows[0];
 
         // Cập nhật borrow
         await client.query(
@@ -266,9 +269,40 @@ async checkReader(studentId) {
            WHERE id = $1`,
           [book_id]
         );
+
+        const reviewExistsRes = await client.query(
+          `SELECT 1
+           FROM book_reviews
+           WHERE user_id = $1 AND book_id = $2
+           LIMIT 1`,
+          [user_id, book_id]
+        );
+
+        const shouldSendReviewNotification = !reviewExistsRes.rows[0];
+
+        if (shouldSendReviewNotification) {
+          await client.query(
+            `INSERT INTO notifications (user_id, type, title, message)
+             VALUES ($1, 'general', $2, $3)`,
+            [
+              user_id,
+              'Please review your returned book',
+              `You have returned "${book_title}". Please share your review to help other readers.`,
+            ]
+          );
+        }
+
+        returnedItems.push({
+          borrow_id: id,
+          user_id,
+          book_id,
+          book_title,
+          review_notification_sent: shouldSendReviewNotification,
+        });
       }
 
       await client.query('COMMIT');
+      return returnedItems;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

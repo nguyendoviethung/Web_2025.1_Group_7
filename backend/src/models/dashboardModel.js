@@ -94,25 +94,32 @@ async getCategoryDistribution() {
   },
   
   // Top 5 sách được mượn nhiều nhất
-  async getTopBooks() {
-    const result = await getPool().query(`
-      SELECT
-        b.id,
-        b.title,
-        b.book_cover              AS cover,
-        b.borrowed_all_time       AS loans
-      FROM books b
-      WHERE b.borrowed_all_time > 0
-      ORDER BY b.borrowed_all_time DESC
-      LIMIT 5
-    `);
-    return result.rows.map(r => ({
-      id:    r.id,
-      title: r.title,
-      cover: r.cover || 'https://placehold.co/60x80?text=No+Cover',
-      loans: Number(r.loans),
-    }));
-  },
+async getTopBooks() {
+  const result = await getPool().query(`
+    SELECT
+      b.id,
+      b.title,
+      b.book_cover AS cover,
+
+      COUNT(DISTINCT (br.user_id, b.id)) AS loans
+
+    FROM books b
+    LEFT JOIN book_copies bc ON bc.book_id = b.id
+    LEFT JOIN borrows br ON br.book_copy_id = bc.id
+
+    GROUP BY b.id
+    HAVING COUNT(br.id) > 0
+    ORDER BY loans DESC
+    LIMIT 5
+  `);
+
+  return result.rows.map(r => ({
+    id:    r.id,
+    title: r.title,
+    cover: r.cover || 'https://placehold.co/60x80?text=No+Cover',
+    loans: Number(r.loans),
+  }));
+ },
 };
 
 

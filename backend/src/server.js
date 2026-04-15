@@ -1,44 +1,55 @@
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { createServer } from 'http';
+
 import { startBorrowCron } from './cron/borrowCron.js';
+import { setupWsServer }  from './ws/wsServer.js';
 
 const require   = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env từ thư mục backend/
+// Load .env
 require('dotenv').config({ path: resolve(__dirname, '../.env') });
 
-// Verify đã load đúng
-console.log(' DB_HOST     =', process.env.DB_HOST);
+// Debug env
+console.log('DB_HOST     =', process.env.DB_HOST);
 console.log('DB_USER     =', process.env.DB_USER);
-console.log(' DB_NAME     =', process.env.DB_NAME);
-console.log(' DB_PASSWORD =', process.env.DB_PASSWORD);
+console.log('DB_NAME     =', process.env.DB_NAME);
+console.log('DB_PASSWORD =', process.env.DB_PASSWORD);
 
-// Import app và db
-import app          from './app.js';
-import { connect }  from './config/db.js';
+// Import app + db
+import app         from './app.js';
+import { connect } from './config/db.js';
 
 const PORT = process.env.PORT || 3000;
 
+//  Tạo HTTP server từ Express
+const httpServer = createServer(app);
+
+//  Gắn WebSocket vào server
+setupWsServer(httpServer);
+
 connect((err, client, release) => {
   if (err) {
-    console.error(' Cannot connect to PostgreSQL:', err.message);
+    console.error('Cannot connect to PostgreSQL:', err.message);
     process.exit(1);
   }
 
   release();
-  console.log(' PostgreSQL connected');
+  console.log('PostgreSQL connected');
 
-  // Khởi động cron job để cập nhật trạng thái mượn quá hạn và tính tiền phạt
+  // Cron job
   startBorrowCron();
 
-  app.listen(PORT, () => {
-    console.log(` Server running at http://localhost:${PORT}`);
-    console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
+  // Start server
+  httpServer.listen(PORT, () => {
+    console.log(` HTTP + WS server running at http://localhost:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 });
 
+// Error handlers
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err.message);
 });
