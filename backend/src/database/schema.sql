@@ -167,6 +167,7 @@ CREATE TABLE notifications (
                     CHECK (type IN ('general', 'due_reminder', 'overdue', 'fine', 'system')),
     title       VARCHAR(255),
     message     TEXT         NOT NULL,
+    reference_id VARCHAR(10),
     is_read     BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
 
