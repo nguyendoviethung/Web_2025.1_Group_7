@@ -1,6 +1,3 @@
-// frontend/src/pages/reader/BookCatalog.jsx
-// Reviews tab is read-only — writing is done via notification
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Spin, Select, Rate } from "antd";
 import {
@@ -22,12 +19,12 @@ const SORT_OPTIONS = [
   { label: "Title A→Z",     value: "title__ASC"              },
 ];
 
-// ── Star display ──────────────────────────────────────
+// Star display 
 function StarDisplay({ value, size = 14 }) {
   return <Rate value={value} disabled style={{ fontSize: size, color: "#faad14" }} />;
 }
 
-// ── Read-only Review Section ──────────────────────────
+// Read-only Review Section 
 function ReviewSection({ bookId, bookTitle }) {
   const [reviews, setReviews] = useState([]);
   const [dist,    setDist]    = useState([]);
@@ -109,7 +106,7 @@ function ReviewSection({ bookId, bookTitle }) {
   );
 }
 
-// ── Book Detail Modal ─────────────────────────────────
+// Book Detail Modal
 function BookDetailModal({ book, onClose }) {
   const toast = useToast();
   const [tab,       setTab]      = useState("info");
@@ -236,7 +233,7 @@ function BookDetailModal({ book, onClose }) {
   );
 }
 
-// ── Main BookCatalog page ─────────────────────────────
+// Main BookCatalog page 
 export default function BookCatalog() {
   const toast = useToast();
 
@@ -299,7 +296,7 @@ export default function BookCatalog() {
   return (
     <div className="book-catalog">
       <div className="bc-header">
-        <h1>📚 Book Catalog</h1>
+        <h1>Book Catalog</h1>
         <p>{total} books available in library</p>
       </div>
 

@@ -108,6 +108,7 @@ const ReservationModel = {
     return res.rows[0];
   },
 
+
   async expireOverdueReady() {
     const res = await getPool().query(
       `UPDATE book_reservations
@@ -116,6 +117,36 @@ const ReservationModel = {
        RETURNING id, user_id, book_id`
     );
     return res.rows;
+  },
+
+//
+  async promoteNextPending(bookId, pool) {
+    const p = pool || getPool();
+
+    const next = await p.query(
+      `SELECT r.id, r.user_id, b.title AS book_title
+       FROM book_reservations r
+       JOIN books b ON b.id = r.book_id
+       WHERE r.book_id = $1 AND r.status = 'pending'
+       ORDER BY r.reserved_at ASC
+       LIMIT 1`,
+      [bookId]
+    );
+
+    if (!next.rows[0]) return null; // nobody waiting
+
+    const { id, user_id, book_title } = next.rows[0];
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 3);
+
+    await p.query(
+      `UPDATE book_reservations
+       SET status = 'ready', expires_at = $2, notified_at = NOW()
+       WHERE id = $1`,
+      [id, expiresAt.toISOString()]
+    );
+
+    return { reservation_id: id, user_id, book_title };
   },
 
   async markFulfilled(userId, bookId) {
@@ -135,18 +166,31 @@ const ReservationModel = {
     return !!res.rows[0];
   },
 
-  async findAll({ status = '', page = 1, limit = 10 }) {
+  async findAll({ status = '', search = '', page = 1, limit = 10 }) {
     const offset = (Number(page) - 1) * Number(limit);
     const params = [];
-    let whereSQL = '';
+    const where  = [];
 
     if (status) {
       params.push(status);
-      whereSQL = `WHERE r.status = $1`;
+      where.push(`r.status = $${params.length}`);
     }
 
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(b.title ILIKE $${params.length} OR u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`);
+    }
+
+    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
     const [countRes, dataRes] = await Promise.all([
-      getPool().query(`SELECT COUNT(*) FROM book_reservations r ${whereSQL}`, params),
+      getPool().query(
+        `SELECT COUNT(*) FROM book_reservations r
+         JOIN books b ON b.id = r.book_id
+         JOIN users u ON u.id = r.user_id
+         ${whereSQL}`,
+        params
+      ),
       getPool().query(
         `SELECT r.*, b.title AS book_title, b.book_cover,
                 u.full_name AS reader_name, u.email AS reader_email, u.avatar_url AS reader_avatar

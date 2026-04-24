@@ -19,12 +19,14 @@ import "../../style/BorrowManagement.scss";
 const PAGE_SIZE    = 8;
 const FINE_PER_DAY = 5000;
 
+// Các option filter trạng thái, tương ứng với query params backend
 const STATUS_FILTER = [
   { label: "Borrowing", value: "borrowing" },
   { label: "Overdue",   value: "overdue"   },
   { label: "Returned",  value: "returned"  },
 ];
 
+// Các option sắp xếp, tương ứng với query params backend
 const SORT_OPTIONS = [
   { label: "Borrow Date ↓", sortBy: "borrow_date", sortOrder: "DESC" },
   { label: "Borrow Date ↑", sortBy: "borrow_date", sortOrder: "ASC"  },
@@ -32,7 +34,7 @@ const SORT_OPTIONS = [
   { label: "Due Date ↑",    sortBy: "due_date",    sortOrder: "ASC"  },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// Mapping trạng thái sang màu sắc và label hiển thị
 const STATUS_META = {
   borrowing: { bg: "#e6f4ff", color: "#0958d9", border: "#91caff", dot: "#2c8df4", label: "Borrowing" },
   overdue:   { bg: "#fff1f0", color: "#cf1322", border: "#ffa39e", dot: "#ff4d4f", label: "Overdue"   },
@@ -62,9 +64,8 @@ const defaultDueDate = () => {
   return d.toISOString().split("T")[0];
 };
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: VIEW DETAIL
-// ════════════════════════════════════════════════════════════════════════════
+
 function ViewModal({ borrowId, onClose }) {
   const toast = useToast();
   const [borrow, setBorrow]   = useState(null);
@@ -164,9 +165,7 @@ function ViewModal({ borrowId, onClose }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: BORROW
-// ════════════════════════════════════════════════════════════════════════════
 
 const BORROW_STEP = { READER: "READER", BOOKS: "BOOKS" };
 
@@ -228,7 +227,7 @@ function BorrowModal({ onClose, onDone }) {
   
     if (checkingRef.current) return; 
 
-    // ── STEP 1: Quét thẻ sinh viên ──
+    // STEP 1: Quét thẻ sinh viên để lấy thông tin reader và kiểm tra điều kiện mượn
     if (stepRef.current === BORROW_STEP.READER) {
 
       if (readerScannedSetRef.current.has(text)) return; 
@@ -250,7 +249,7 @@ function BorrowModal({ onClose, onDone }) {
         setChecking(false);
       }
 
-    // ── STEP 2: Quét sách ──
+    // STEP 2: Quét sách 
     } else if (stepRef.current === BORROW_STEP.BOOKS) {
       // QR thẻ SV vẫn còn trong khung → bỏ qua silent
       if (readerScannedSetRef.current.has(text)) return;
@@ -355,7 +354,7 @@ function BorrowModal({ onClose, onDone }) {
 
         <div className="bm-modal__body">
 
-          {/* ═══ STEP 1: Quét thẻ sinh viên ═══ */}
+          {/* STEP 1: Quét thẻ sinh viên  */}
           {step === BORROW_STEP.READER && (
             <div className="bm-scanner-layout">
               <div className="bm-camera-col">
@@ -437,7 +436,7 @@ function BorrowModal({ onClose, onDone }) {
             </div>
           )}
 
-          {/* ═══ STEP 2: Quét sách ═══ */}
+          {/*  STEP 2: Quét sách  */}
           {step === BORROW_STEP.BOOKS && (
             <div className="bm-scanner-layout">
               <div className="bm-camera-col">
@@ -569,10 +568,9 @@ function BorrowModal({ onClose, onDone }) {
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Modal: RETURN
 // Quét từng barcode sách → hiện thông tin → submit tất cả
-// ════════════════════════════════════════════════════════════════════════════
+
 function ReturnModal({ onClose, onDone }) {
 const toast = useToast();
   const [checking,     setChecking]     = useState(false);
@@ -580,10 +578,7 @@ const toast = useToast();
   const [scannedItems, setScannedItems] = useState([]);
 
   const checkingRef     = useRef(false);
-  const scannedItemsRef = useRef([]);
-
-  // ── Per-text pause: Map<barcode, unpauseTimestamp> ──
-  // Chặn từng barcode riêng lẻ, không global → barcode khác vẫn xử lý bình thường
+  const scannedItemsRef = useRef([]); 
   const pausedTextsRef = useRef(new Map());
 
   useEffect(() => { checkingRef.current     = checking;     }, [checking]);
@@ -614,7 +609,7 @@ const toast = useToast();
     // Barcode này đang bị pause (vừa lỗi) → bỏ qua silent
     if (isTextPaused(barcode)) return;
 
-    // Đã có trong danh sách rồi
+    // Kiểm tra đã quét cuốn này chưa
     if (scannedItemsRef.current.find(i => i.barcode === barcode)) {
       toast.warning("Already in return list");
       pauseText(barcode, 3000);
@@ -625,8 +620,7 @@ const toast = useToast();
     try {
       const info = await borrowService.checkReturnBarcode(barcode);
 
-      // ── Kiểm tra người đọc khác nhau ──
-      // Nếu danh sách đã có sách, so sánh user_id với sách vừa quét
+      // Kiểm tra người đọc khác nhau (nếu đã có sách trong list rồi thì không cho quét sách của người khác, tránh nhầm lẫn)
       const existing = scannedItemsRef.current;
       if (existing.length > 0 && existing[0].user_id !== info.user_id) {
         toast.error(
@@ -668,6 +662,14 @@ const toast = useToast();
       setSubmitting(true);
       await borrowService.returnBatch(scannedItems.map(i => i.borrow_id));
       toast.success(`${scannedItems.length} book(s) returned!`);
+
+      // Trigger notification refresh for all readers (by fetching unread count on each reader)
+      const readerIds = [...new Set(scannedItems.map(i => i.user_id))];
+      readerIds.forEach(readerId => {
+        // Broadcast event to trigger reader's notification refresh
+        window.dispatchEvent(new CustomEvent('bookReturned', { detail: { readerId } }));
+      });
+
       onDone();
       onClose();
     } catch (err) {
@@ -779,9 +781,8 @@ const toast = useToast();
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // Main Page
-// ════════════════════════════════════════════════════════════════════════════
+
 const BorrowManagement = () => {
   const toast = useToast();
 
@@ -882,7 +883,6 @@ const BorrowManagement = () => {
                onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }} />
           <div>
             <div className="bm-book-title">{value}</div>
-            <code className="bm-barcode-sm">{row.barcode}</code>
           </div>
         </div>
       ),

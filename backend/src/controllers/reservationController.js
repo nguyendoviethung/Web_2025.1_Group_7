@@ -20,20 +20,25 @@ const reservationController = {
 
       return res.status(201).json({ message: 'Reservation placed successfully', ...result });
     } catch (err) {
-      // Bắt lỗi unique constraint PostgreSQL (23505) — duplicate active reservation
       if (err.code === '23505') {
         return res.status(400).json({ message: 'You already have an active reservation for this book' });
       }
-      const msg = err.message || 'Internal server error';
+      const msg    = err.message || 'Internal server error';
       const status = msg.includes('not found') ? 404 : 400;
       return res.status(status).json({ message: msg });
     }
   },
 
-  // DELETE /api/reservations/:id  (reader cancel)
+  // DELETE /api/reservations/:id  (reader cancel their own)
   async cancel(req, res) {
     try {
+       console.log("User:", req.user.id);
+    console.log("Reservation ID:", req.params.id);
       const reservation = await ReservationModel.cancel(req.user.id, req.params.id);
+
+      // After reader cancels → promote the next waiting person automatically
+      await promoteNextAndNotify(reservation.book_id, reservation);
+
       return res.json({ message: 'Reservation cancelled', reservation });
     } catch (err) {
       return res.status(400).json({ message: err.message || 'Failed to cancel' });
@@ -41,9 +46,11 @@ const reservationController = {
   },
 
   // GET /api/reservations/my
+  // Auto-expires any overdue-ready reservations for this user before returning the list.
   async getMy(req, res) {
     try {
-      const reservations = await ReservationModel.findByUser(req.user.id);
+      const userId = req.user.id;
+      const reservations = await ReservationModel.findByUser(userId);
       return res.json({ reservations });
     } catch (err) {
       return res.status(500).json({ message: 'Internal server error' });
@@ -53,34 +60,16 @@ const reservationController = {
   // GET /api/reservations  (admin)
   async getAll(req, res) {
     try {
-      const { status = '', page = 1, limit = 10 } = req.query;
-      const data = await ReservationModel.findAll({ status, page: Number(page), limit: Number(limit) });
+      const { status = '', search = '', page = 1, limit = 10 } = req.query;
+      const data = await ReservationModel.findAll({
+        status,
+        search,
+        page:  Number(page),
+        limit: Number(limit),
+      });
       return res.json(data);
     } catch (err) {
       return res.status(500).json({ message: 'Internal server error' });
-    }
-  },
-
-  // PATCH /api/reservations/:id/ready  (admin — đánh dấu sách đã sẵn sàng cho reader)
-  async markReady(req, res) {
-    try {
-      const reservation = await ReservationModel.markReady(req.params.id);
-      if (!reservation) return res.status(404).json({ message: 'Reservation not found' });
-
-      // Lấy thêm thông tin để gửi notification
-      const detail = await ReservationModel.findById(req.params.id);
-
-      // Gửi notification cho reader
-      await NotificationModel.create({
-        user_id: reservation.user_id,
-        type:    'general',
-        title:   '📚 Your reserved book is ready!',
-        message: `"${detail?.book_title || 'Your reserved book'}" is ready for pickup. Please come pick it up within ${3} days before the reservation expires.`,
-      });
-
-      return res.json({ message: 'Reservation marked as ready, reader notified', reservation });
-    } catch (err) {
-      return res.status(500).json({ message: err.message || 'Internal server error' });
     }
   },
 
@@ -89,19 +78,62 @@ const reservationController = {
     try {
       const reservation = await ReservationModel.adminCancel(req.params.id);
 
-      // Notify reader nếu muốn
+      // Notify the cancelled reader
       await NotificationModel.create({
         user_id: reservation.user_id,
         type:    'general',
         title:   'Reservation Cancelled',
         message: 'Your reservation has been cancelled by the library staff. Please contact us if you have questions.',
-      }).catch(() => {}); // không block nếu notify lỗi
+      }).catch(() => {});
+
+      // Promote the next person in queue automatically
+      await this.promoteNextAndNotify(reservation.book_id, reservation);
 
       return res.json({ message: 'Reservation cancelled by admin', reservation });
     } catch (err) {
       return res.status(400).json({ message: err.message || 'Failed to cancel' });
     }
   },
+  
+  async promoteNextAndNotify(bookId, cancelledReservation) {
+  try {
+    const next = await ReservationModel.promoteNextPending(bookId);
+    if (!next) return; // nobody else is waiting
+
+    await NotificationModel.create({
+      user_id: next.user_id,
+      type:    'general',
+      title:   ' Your reserved book is now available!',
+      message: `Great news! "${next.book_title}" is now available for pickup. Please come to the library within 3 days before your reservation expires.`,
+    });
+  } catch (err) {
+    // Don't block the main response if this fails
+    console.error('[reservationController] promoteNextAndNotify error:', err.message);
+  }
+  
+},
+
+  async markReady(req, res) {
+    try {
+      const reservation = await ReservationModel.markReady(req.params.id);
+
+      await NotificationModel.create({
+        user_id: reservation.user_id,
+        type: 'general',
+        title: ' Book Ready',
+        message: 'Your reserved book is ready to pick up.',
+      });
+
+      return res.json({ message: 'Marked as ready', reservation });
+    } catch (err) {
+      return res.status(400).json({ message: err.message });
+    }
+  },
+
+
 };
+
+
+
 
 export default reservationController;

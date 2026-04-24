@@ -49,7 +49,7 @@ export default function ReaderReservations() {
  
   return (
     <div className="reader-reservations">
-      <h1 className="rr-title"><SaveOutlined /> My Reservations</h1>
+      <h1 className="rr-title"> My Reservations</h1>
  
       {loading ? (
         <div style={{ display:"flex", justifyContent:"center", padding:"6rem" }}><Spin size="large" /></div>
@@ -88,7 +88,7 @@ export default function ReaderReservations() {
                         </div>
                         {r.status === "ready" && (
                           <div className="rr-ready-notice">
-                            📚 This book is ready for pickup at the library!
+                             This book is ready for pickup at the library!
                           </div>
                         )}
                       </div>

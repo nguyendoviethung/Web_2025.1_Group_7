@@ -185,28 +185,26 @@ CREATE TABLE book_reservations (
     id           SERIAL        PRIMARY KEY,
     user_id      INT           NOT NULL,
     book_id      VARCHAR(10)   NOT NULL,
+
     status       VARCHAR(20)   NOT NULL DEFAULT 'pending'
-                     CHECK (status IN (
-                         'pending',    -- đang chờ sách available
-                         'ready',      -- sách đã available, chờ đến lấy
-                         'fulfilled',  -- đã đến lấy & mượn thành công
-                         'cancelled',  -- user tự hủy
-                         'expired'     -- quá hạn không đến lấy
-                     )),
+        CHECK (status IN (
+            'pending',     -- đang chờ sách available
+            'ready',       -- sách đã available, chờ đến lấy
+            'fulfilled',   -- đã đến lấy & mượn thành công
+            'cancelled',   -- user tự hủy
+            'expired'      -- quá hạn không đến lấy
+        )),
+
     reserved_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- Khi status = 'ready': expires_at = ready_at + 3 ngày
     expires_at   TIMESTAMP,
-    notified_at  TIMESTAMP,   -- thời điểm đã gửi thông báo "sách sẵn sàng"
+    notified_at  TIMESTAMP,
     notes        TEXT,
- 
+
     CONSTRAINT fk_res_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
     CONSTRAINT fk_res_book
-        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
- 
-    -- 1 user chỉ có 1 reservation pending/ready cho 1 sách tại 1 thời điểm
-    CONSTRAINT uq_active_reservation
-        UNIQUE NULLS NOT DISTINCT (user_id, book_id, status)
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );
  
 CREATE INDEX idx_res_user_id   ON book_reservations(user_id);

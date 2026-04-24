@@ -11,7 +11,6 @@ router.use(authorize('staff'));
 // Danh sách & chi tiết
 router.get('/',                          borrowController.getAll);
 router.get('/:id',                       borrowController.getById);
-
 // Kiểm tra trước khi thao tác
 router.get('/check-reader/:studentId',   borrowController.checkReader);
 router.get('/check-barcode/:barcode',    borrowController.checkBarcode);

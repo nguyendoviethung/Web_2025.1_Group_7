@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Spin, Select } from "antd";
+import { Spin } from "antd";
 import {
-  CloseOutlined, CheckCircleOutlined, EyeOutlined,
-  SortAscendingOutlined, BookOutlined, UserOutlined,
-  CalendarOutlined, StopOutlined, SaveOutlined,
+  CloseOutlined, EyeOutlined, BookOutlined,
+  UserOutlined, CalendarOutlined, StopOutlined,
+  SaveOutlined, SearchOutlined,
 } from "@ant-design/icons";
 import CustomPagination from "../../components/Pagination";
 import Filter           from "../../components/Filter";
@@ -32,21 +32,17 @@ const STATUS_META = {
 const StatusBadge = ({ status }) => {
   const m = STATUS_META[status] || STATUS_META.pending;
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: "0.5rem",
-      padding: "0.3rem 1rem", borderRadius: "2rem",
-      fontSize: "1.2rem", fontWeight: 600,
-      background: m.bg, color: m.color,
-    }}>
-      <span style={{ width:"0.6rem", height:"0.6rem", borderRadius:"50%", background:m.dot, flexShrink:0 }} />
+    <span className="resv-status-badge" style={{ background: m.bg, color: m.color }}>
+      <span className="resv-status-dot" style={{ background: m.dot }} />
       {m.label}
     </span>
   );
 };
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString("vi-VN", { day:"2-digit", month:"2-digit", year:"numeric" }) : "—";
+const fmtDate = d =>
+  d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
-// ── Detail Modal ──────────────────────────────────────
+// ─── Detail Modal ──────────────────────────────────────
 function DetailModal({ reservation: r, onClose }) {
   if (!r) return null;
   return (
@@ -57,7 +53,7 @@ function DetailModal({ reservation: r, onClose }) {
           <button className="resv-close-btn" onClick={onClose}><CloseOutlined /></button>
         </div>
         <div className="resv-modal-body">
-          {/* Book */}
+
           <div className="resv-section">
             <h4><BookOutlined /> Book</h4>
             <div className="resv-book-row">
@@ -73,7 +69,6 @@ function DetailModal({ reservation: r, onClose }) {
             </div>
           </div>
 
-          {/* Reader */}
           <div className="resv-section">
             <h4><UserOutlined /> Reader</h4>
             <div className="resv-reader-row">
@@ -89,16 +84,15 @@ function DetailModal({ reservation: r, onClose }) {
             </div>
           </div>
 
-          {/* Dates */}
           <div className="resv-section">
-            <h4><CalendarOutlined /> Dates</h4>
+            <h4><CalendarOutlined /> Timeline</h4>
             <div className="resv-dates-grid">
               <div className="resv-date-item">
                 <label>Reserved</label>
                 <span>{fmtDate(r.reserved_at)}</span>
               </div>
               <div className="resv-date-item">
-                <label>Expires</label>
+                <label>Pickup deadline</label>
                 <span style={{ color: r.status === "ready" ? "#d46b08" : "inherit" }}>
                   {fmtDate(r.expires_at)}
                 </span>
@@ -109,7 +103,14 @@ function DetailModal({ reservation: r, onClose }) {
           <div className="resv-status-row">
             Status: <StatusBadge status={r.status} />
           </div>
+
+          {r.status === "ready" && (
+            <div className="resv-ready-note">
+              📢 Reader has been notified automatically when the book became available.
+            </div>
+          )}
         </div>
+
         <div className="resv-modal-footer">
           <button className="resv-btn resv-btn--secondary" onClick={onClose}>Close</button>
         </div>
@@ -118,31 +119,20 @@ function DetailModal({ reservation: r, onClose }) {
   );
 }
 
-// ── Confirm Action Modal ──────────────────────────────
-function ConfirmModal({ reservation, action, onClose, onDone }) {
+// ─── Cancel Confirm Modal ──────────────────────────────
+function CancelModal({ reservation, onClose, onDone }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
-
-  const isReady  = action === "ready";
-  const title    = isReady ? "Mark as Ready" : "Cancel Reservation";
-  const desc     = isReady
-    ? `Mark "${reservation.book_title}" as ready for "${reservation.reader_name}" to pick up? A notification will be sent.`
-    : `Cancel reservation for "${reservation.book_title}" by "${reservation.reader_name}"?`;
 
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      if (isReady) {
-        await axiosClient.patch(`/reservations/${reservation.id}/ready`);
-        toast.success("Marked as ready — reader notified!");
-      } else {
-        await axiosClient.patch(`/reservations/${reservation.id}/cancel`);
-        toast.success("Reservation cancelled.");
-      }
+      await axiosClient.patch(`/reservations/${reservation.id}/cancel`);
+      toast.success("Reservation cancelled.");
       onDone();
       onClose();
     } catch (err) {
-      toast.error(err.message || "Action failed");
+      toast.error(err.message || "Failed to cancel");
     } finally {
       setLoading(false);
     }
@@ -152,25 +142,24 @@ function ConfirmModal({ reservation, action, onClose, onDone }) {
     <div className="resv-overlay" onClick={onClose}>
       <div className="resv-modal resv-modal--confirm" onClick={e => e.stopPropagation()}>
         <div className="resv-modal-header">
-          <div className={`resv-modal-title ${isReady ? "" : "resv-modal-title--danger"}`}>
-            {isReady ? <CheckCircleOutlined /> : <StopOutlined />} {title}
+          <div className="resv-modal-title resv-modal-title--danger">
+            <StopOutlined /> Cancel Reservation
           </div>
           <button className="resv-close-btn" onClick={onClose}><CloseOutlined /></button>
         </div>
         <div className="resv-modal-body resv-modal-body--center">
-          <div className={`resv-confirm-icon ${isReady ? "resv-confirm-icon--ok" : "resv-confirm-icon--warn"}`}>
-            {isReady ? <CheckCircleOutlined /> : <StopOutlined />}
+          <div className="resv-confirm-icon resv-confirm-icon--warn">
+            <StopOutlined />
           </div>
-          <p>{desc}</p>
+          <p>
+            Cancel reservation for <strong>"{reservation.book_title}"</strong> by{" "}
+            <strong>{reservation.reader_name}</strong>?
+          </p>
         </div>
         <div className="resv-modal-footer">
-          <button className="resv-btn resv-btn--secondary" onClick={onClose}>Cancel</button>
-          <button
-            className={`resv-btn ${isReady ? "resv-btn--success" : "resv-btn--danger"}`}
-            onClick={handleConfirm}
-            disabled={loading}
-          >
-            {loading ? <Spin size="small" /> : (isReady ? "Confirm Ready" : "Cancel Reservation")}
+          <button className="resv-btn resv-btn--secondary" onClick={onClose}>Go back</button>
+          <button className="resv-btn resv-btn--danger" onClick={handleConfirm} disabled={loading}>
+            {loading ? <Spin size="small" /> : "Cancel Reservation"}
           </button>
         </div>
       </div>
@@ -178,26 +167,37 @@ function ConfirmModal({ reservation, action, onClose, onDone }) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────
 export default function ReservationManagement() {
   const toast = useToast();
 
+  // Data
   const [reservations, setReservations] = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [total,        setTotal]        = useState(0);
   const [page,         setPage]         = useState(1);
-  const [status,       setStatus]       = useState("");
 
+  // Filters
+  const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+
+  // Refs to avoid stale closure
   const statusRef = useRef("");
+  const searchRef = useRef("");
   const pageRef   = useRef(1);
+  const debounce  = useRef(null);
 
+  // Modals
   const [detailRes,  setDetailRes]  = useState(null);
-  const [confirmAct, setConfirmAct] = useState(null); // { reservation, action }
+  const [cancelRes,  setCancelRes]  = useState(null);
 
-  const load = useCallback(async (p, st) => {
+  // ── Fetch ────────────────────────────────────────────
+  const load = useCallback(async (p, st, q) => {
     setLoading(true);
     try {
-      const res = await axiosClient.get("/reservations", { params: { status: st, page: p, limit: PAGE_SIZE } });
+      const res = await axiosClient.get("/reservations", {
+        params: { status: st, search: q, page: p, limit: PAGE_SIZE },
+      });
       setReservations(res.reservations || []);
       setTotal(res.total || 0);
     } catch {
@@ -207,65 +207,127 @@ export default function ReservationManagement() {
     }
   }, []);
 
-  useEffect(() => { load(1, ""); }, []);
+  useEffect(() => { load(1, "", ""); }, []);
 
   const handleStatusFilter = (val = "") => {
-    setStatus(val);  statusRef.current = val;
-    setPage(1);      pageRef.current   = 1;
-    load(1, val);
+    setStatus(val);   statusRef.current = val;
+    setPage(1);       pageRef.current   = 1;
+    load(1, val, searchRef.current);
+  };
+
+  const handleSearch = (e) => {
+    const val = e.target.value;
+    setSearch(val);   searchRef.current = val;
+    setPage(1);       pageRef.current   = 1;
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => load(1, statusRef.current, val.trim()), 400);
+  };
+
+  const handleReset = () => {
+    setStatus(""); statusRef.current = "";
+    setSearch(""); searchRef.current = "";
+    setPage(1);    pageRef.current   = 1;
+    load(1, "", "");
   };
 
   const handlePageChange = (p) => {
     setPage(p); pageRef.current = p;
-    load(p, statusRef.current);
+    load(p, statusRef.current, searchRef.current);
   };
 
-  const reload = () => load(pageRef.current, statusRef.current);
+  const reload = () => load(pageRef.current, statusRef.current, searchRef.current);
 
-  // ── Status counts for summary cards ──────────────────
-  const summaryCount = (st) => reservations.filter(r => r.status === st).length;
+  const hasFilter = search || status;
+
+  // Summary counts — fetch separate totals for each status once
+  const [statusCounts, setStatusCounts] = useState({});
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const counts = {};
+      await Promise.all(
+        ["pending", "ready", "fulfilled", "expired"].map(async (st) => {
+          try {
+            const r = await axiosClient.get("/reservations", { params: { status: st, page: 1, limit: 1 } });
+            counts[st] = r.total || 0;
+          } catch { counts[st] = 0; }
+        })
+      );
+      setStatusCounts(counts);
+    };
+    fetchCounts();
+  }, []);
 
   return (
     <div className="reservation-management">
+
+      {/* ── Header ── */}
       <div className="header">
         <h1 className="tittle"><SaveOutlined /> Reservation Management</h1>
         <div className="header-actions">
+
+          {/* Search box */}
+          <div className="resv-search-box">
+            <SearchOutlined className="resv-search-icon" />
+            <input
+              placeholder="Search by book or reader..."
+              value={search}
+              onChange={handleSearch}
+            />
+          </div>
+
+          {/* Status filter */}
           <Filter
             filterName="Status"
             options={STATUS_FILTER}
             value={status}
             onChange={handleStatusFilter}
           />
-          {status && (
-            <button className="btn-reset" onClick={() => handleStatusFilter("")}>✕ Reset</button>
+
+          {hasFilter && (
+            <button className="btn-reset" onClick={handleReset}>✕ Reset</button>
           )}
         </div>
       </div>
 
-      {/* Summary row */}
+      {/* ── Summary cards (clickable shortcuts) ── */}
       <div className="resv-summary-row">
         {[
-          { key: "pending",  label: "Pending",   color: "#0958d9", bg: "#e6f4ff" },
-          { key: "ready",    label: "Ready",     color: "#389e0d", bg: "#f6ffed" },
-          { key: "fulfilled",label: "Fulfilled", color: "#595959", bg: "#f5f5f5" },
-          { key: "expired",  label: "Expired",   color: "#cf1322", bg: "#fff1f0" },
+          { key: "pending",   label: "Pending",   color: "#0958d9", bg: "#e6f4ff" },
+          { key: "ready",     label: "Ready",     color: "#389e0d", bg: "#f6ffed" },
+          { key: "fulfilled", label: "Fulfilled", color: "#595959", bg: "#f5f5f5" },
+          { key: "expired",   label: "Expired",   color: "#cf1322", bg: "#fff1f0" },
         ].map(s => (
-          <div key={s.key} className="resv-summary-card" style={{ background: s.bg }}
-               onClick={() => handleStatusFilter(s.key)}>
+          <div
+            key={s.key}
+            className={`resv-summary-card ${status === s.key ? "resv-summary-card--active" : ""}`}
+            style={{ background: s.bg }}
+            onClick={() => handleStatusFilter(status === s.key ? "" : s.key)}
+          >
             <div className="resv-summary-num" style={{ color: s.color }}>
-              {loading ? "—" : reservations.filter(r => r.status === s.key).length}
+              {statusCounts[s.key] ?? "—"}
             </div>
             <div className="resv-summary-lbl" style={{ color: s.color }}>{s.label}</div>
           </div>
         ))}
       </div>
 
+      {/* ── Filter summary ── */}
+      {hasFilter && (
+        <div className="resv-filter-bar">
+          {search && <span className="resv-filter-tag">🔍 "{search}"</span>}
+          {status && <span className="resv-filter-tag">📋 {status}</span>}
+          <span className="resv-filter-count">{total} result{total !== 1 ? "s" : ""}</span>
+        </div>
+      )}
+
+      {/* ── Table ── */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "6rem" }}><Spin size="large" /></div>
       ) : reservations.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📚</div>
-          <p>{status ? `No ${status} reservations` : "No reservations found"}</p>
+          <p>{hasFilter ? "No reservations match your filters" : "No reservations found"}</p>
+          {hasFilter && <button className="btn-reset" onClick={handleReset}>Clear filters</button>}
         </div>
       ) : (
         <div className="resv-table-wrap">
@@ -275,16 +337,22 @@ export default function ReservationManagement() {
                 <th>#</th>
                 <th>Book</th>
                 <th>Reader</th>
-                <th>Reserved</th>
-                <th>Expires</th>
+                <th>Reserved On</th>
+                <th>Pickup Deadline</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {reservations.map((r, idx) => (
-                <tr key={r.id} className={r.status === "expired" ? "resv-row--expired" : ""}>
+                <tr key={r.id}
+                    className={[
+                      r.status === "expired"   ? "resv-row--expired"  : "",
+                      r.status === "cancelled" ? "resv-row--cancelled": "",
+                    ].filter(Boolean).join(" ")}
+                >
                   <td className="resv-idx">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+
                   <td>
                     <div className="resv-book-cell">
                       <img
@@ -298,6 +366,7 @@ export default function ReservationManagement() {
                       </div>
                     </div>
                   </td>
+
                   <td>
                     <div className="resv-reader-cell">
                       <img
@@ -312,28 +381,32 @@ export default function ReservationManagement() {
                       </div>
                     </div>
                   </td>
+
                   <td className="resv-date">{fmtDate(r.reserved_at)}</td>
-                  <td className="resv-date" style={{ color: r.status === "ready" ? "#d46b08" : "inherit" }}>
+
+                  <td className="resv-date"
+                      style={{ color: r.status === "ready" ? "#d46b08" : "inherit", fontWeight: r.status === "ready" ? 600 : 400 }}>
                     {fmtDate(r.expires_at)}
                   </td>
+
                   <td><StatusBadge status={r.status} /></td>
+
                   <td>
                     <div className="resv-actions">
-                      <button className="resv-action-btn resv-action-btn--view"
-                              onClick={() => setDetailRes(r)} title="View">
+                      <button
+                        className="resv-action-btn resv-action-btn--view"
+                        onClick={() => setDetailRes(r)}
+                        title="View detail"
+                      >
                         <EyeOutlined />
                       </button>
-                      {r.status === "pending" && (
-                        <button className="resv-action-btn resv-action-btn--ready"
-                                onClick={() => setConfirmAct({ reservation: r, action: "ready" })}
-                                title="Mark Ready">
-                          <CheckCircleOutlined />
-                        </button>
-                      )}
+                      {/* Only allow admin cancel for pending/ready */}
                       {["pending", "ready"].includes(r.status) && (
-                        <button className="resv-action-btn resv-action-btn--cancel"
-                                onClick={() => setConfirmAct({ reservation: r, action: "cancel" })}
-                                title="Cancel">
+                        <button
+                          className="resv-action-btn resv-action-btn--cancel"
+                          onClick={() => setCancelRes(r)}
+                          title="Cancel reservation"
+                        >
                           <StopOutlined />
                         </button>
                       )}
@@ -347,12 +420,14 @@ export default function ReservationManagement() {
       )}
 
       {!loading && total > PAGE_SIZE && (
-        <CustomPagination total={total} pageSize={PAGE_SIZE} currentPage={page} onChange={handlePageChange} />
+        <CustomPagination
+          total={total} pageSize={PAGE_SIZE}
+          currentPage={page} onChange={handlePageChange}
+        />
       )}
 
-      {detailRes  && <DetailModal  reservation={detailRes}       onClose={() => setDetailRes(null)} />}
-      {confirmAct && <ConfirmModal reservation={confirmAct.reservation} action={confirmAct.action}
-                                  onClose={() => setConfirmAct(null)} onDone={reload} />}
+      {detailRes && <DetailModal reservation={detailRes} onClose={() => setDetailRes(null)} />}
+      {cancelRes && <CancelModal reservation={cancelRes} onClose={() => setCancelRes(null)} onDone={reload} />}
     </div>
   );
 }

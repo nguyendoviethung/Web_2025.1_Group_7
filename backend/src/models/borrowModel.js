@@ -5,6 +5,7 @@ const MAX_BORROW_LIMIT = 5;
 
 const BorrowModel = {
 
+  // 1. Kiểm tra reader có đủ điều kiện mượn không
   async checkReader(studentId) {
     const cleanedId = studentId.trim();
     const userRes = await getPool().query(
@@ -59,12 +60,12 @@ const BorrowModel = {
       violations: [
         ...(overdueCount > 0  ? [`Has ${overdueCount} overdue book(s)`] : []),
         ...(totalFine > 0     ? [`Unpaid fine: ${totalFine.toLocaleString('vi-VN')} VND`] : []),
-        ...(currentBorrowing >= MAX_BORROW_LIMIT
-          ? [`Borrow limit reached (${currentBorrowing}/${MAX_BORROW_LIMIT})`] : []),
+        ...(currentBorrowing >= MAX_BORROW_LIMIT ? [`Borrow limit reached (${currentBorrowing}/${MAX_BORROW_LIMIT})`] : []),
       ],
     };
   },
 
+  // 2. Kiểm tra barcode sách để mượn
   async checkBarcode(barcode) {
     const res = await getPool().query(
       `SELECT
@@ -83,6 +84,7 @@ const BorrowModel = {
     return copy;
   },
 
+  // 3.Mượn nhiều sách cùng lúc
   async createBatch({ user_id, items, due_date }) {
     const client = await getPool().connect();
     try {
@@ -102,6 +104,7 @@ const BorrowModel = {
           `SELECT status FROM book_copies WHERE id = $1 FOR UPDATE`,
           [item.book_copy_id]
         );
+
         if (copyCheck.rows[0]?.status !== 'available') {
           throw new Error(`Book copy ${item.book_copy_id} is no longer available`);
         }
@@ -112,13 +115,23 @@ const BorrowModel = {
           [user_id, item.book_copy_id, due_date]
         );
         createdIds.push(br.rows[0].id);
+
         await client.query(
           `UPDATE book_copies SET status = 'borrowed' WHERE id = $1`,
           [item.book_copy_id]
         );
+
         await client.query(
           `UPDATE books SET available = available - 1 WHERE id = $1`,
           [item.book_id]
+        );
+      
+        // Nếu có đặt trước đang chờ, tự động chuyển sang fulfilled
+        await client.query(
+          `UPDATE book_reservations
+           SET status = 'fulfilled'
+           WHERE user_id = $1 AND book_id = $2 AND status = 'ready'`,
+          [user_id, item.book_id]
         );
       }
       await client.query('COMMIT');
@@ -131,6 +144,7 @@ const BorrowModel = {
     }
   },
 
+  // 4. Kiểm tra barcode để trả sách
   async checkReturnBarcode(barcode) {
     const res = await getPool().query(
       `SELECT
@@ -168,6 +182,7 @@ const BorrowModel = {
     };
   },
 
+  // 5. Trả sách hàng loạt 
   async returnBatch(borrowIds) {
     const client = await getPool().connect();
     try {
@@ -204,29 +219,90 @@ const BorrowModel = {
           [book_id]
         );
 
-        // Kiểm tra đã review chưa
-        const reviewExistsRes = await client.query(
-          `SELECT 1 FROM book_reviews WHERE user_id = $1 AND book_id = $2 LIMIT 1`,
+        // ── 1. Tự động thông báo đánh giá sau khi trả sách ──
+        const borrowCountRes = await client.query(
+          `SELECT COUNT(*) AS cnt
+           FROM borrows br
+           JOIN book_copies bc ON bc.id = br.book_copy_id
+           WHERE br.user_id = $1 AND bc.book_id = $2
+             AND br.status = 'returned'`,
           [user_id, book_id]
         );
+        const borrowCount = Number(borrowCountRes.rows[0].cnt);
 
-        if (!reviewExistsRes.rows[0]) {
-          // Gửi notification có reference_id = book_id để frontend mở form review
+        const reviewExistsRes = await client.query(
+          `SELECT id, updated_at FROM book_reviews
+           WHERE user_id = $1 AND book_id = $2 LIMIT 1`,
+          [user_id, book_id]
+        );
+        const existingReview = reviewExistsRes.rows[0] || null;
+
+        if (!existingReview) {
+          // Chưa từng đánh giá → Mời bạn viết đánh giá mớ
           await client.query(
             `INSERT INTO notifications (user_id, type, title, message, reference_id)
              VALUES ($1, 'general', $2, $3, $4)`,
             [
               user_id,
-              '⭐ Rate your returned book',
-              `You just returned "${book_title}". Tap here to leave a review and help other readers!`,
+              'Share your thoughts on this book',
+              `You have returned "${book_title}". Help other readers by sharing your experience — tap here to leave a review!`,
               book_id,
+            ]
+          );
+        } else if (borrowCount >= 2) {
+          // Đã mượn 2 lần trở lên VÀ đã đánh giá → cập nhật đánh giá cũ
+          await client.query(
+            `INSERT INTO notifications (user_id, type, title, message, reference_id)
+             VALUES ($1, 'general', $2, $3, $4)`,
+            [
+              user_id,
+              'Would you like to update your review?',
+              `You returned "${book_title}" again. Your thoughts may have changed — tap here to update your previous review!`,
+              book_id,
+            ]
+          );
+        }
+
+        // ── 2. Tự động thông báo cho người đọc đang chờ đặt trước ──
+
+        // Khi một bản sao được trả lại, hãy kiểm tra xem có ai đang chờ không và thông báo cho họ.
+        const pendingResv = await client.query(
+          `SELECT r.id, r.user_id
+           FROM book_reservations r
+           WHERE r.book_id = $1 AND r.status = 'pending'
+           ORDER BY r.reserved_at ASC
+           LIMIT 1`,
+          [book_id]
+        );
+       
+        if (pendingResv.rows[0]) {
+          const resv = pendingResv.rows[0];
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 3);
+
+          // Đánh dấu đặt chỗ là đã sẵn sàng
+          await client.query(
+            `UPDATE book_reservations
+             SET status = 'ready', expires_at = $2, notified_at = NOW()
+             WHERE id = $1`,
+            [resv.id, expiresAt.toISOString()]
+          );
+
+          // Thông báo cho người đọc đang chờ
+          await client.query(
+            `INSERT INTO notifications (user_id, type, title, message)
+             VALUES ($1, 'general', $2, $3)`,
+            [
+              resv.user_id,
+              ' Your reserved book is now available!',
+              `Great news! "${book_title}" is now available at the library. Please come pick it up within 3 days before your reservation expires.`,
             ]
           );
         }
 
         returnedItems.push({
           borrow_id: id, user_id, book_id, book_title,
-          review_notification_sent: !reviewExistsRes.rows[0],
+          review_notification_sent: true,
         });
       }
 
@@ -239,7 +315,8 @@ const BorrowModel = {
       client.release();
     }
   },
-
+  
+  // 6. Danh sách mượn trả với phân trang, tìm kiếm, lọc trạng thái và sắp xếp
   async findAll({ search = '', status = '', page = 1, limit = 10, sortBy = 'borrow_date', sortOrder = 'DESC' }) {
     const offset = (Number(page) - 1) * Number(limit);
     const params = [];
@@ -286,6 +363,7 @@ const BorrowModel = {
     return { borrows: dataRes.rows, total: Number(countRes.rows[0].count) };
   },
 
+  // 7. Chi tiết phiếu mượn trả
   async findById(id) {
     const result = await getPool().query(
       `SELECT
@@ -303,6 +381,7 @@ const BorrowModel = {
     return result.rows[0] || null;
   },
 
+  // 8. Tự động đánh dấu quá hạn hàng ngày
   async markOverdue() {
     const result = await getPool().query(
       `UPDATE borrows SET status = 'overdue'

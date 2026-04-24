@@ -6,7 +6,7 @@ import {
   BookOutlined, UserOutlined, EnvironmentOutlined,
   TagOutlined, CalendarOutlined, FileTextOutlined,
   ExclamationCircleOutlined, SaveOutlined,
-  SortAscendingOutlined,
+  SortAscendingOutlined, UploadOutlined, PictureOutlined,
 } from "@ant-design/icons";
 import SearchBar        from "../../components/SearchBar";
 import Table            from "../../components/Table";
@@ -21,18 +21,114 @@ const STATUS_OPTIONS    = ["available", "borrowed", "lost", "damaged"];
 const PAGE_SIZE         = 8;
 
 const SORT_OPTIONS = [
-  { label: "Newest First",  sortBy: "created_at",       sortOrder: "DESC" },
-  { label: "Oldest First",  sortBy: "created_at",       sortOrder: "ASC"  },
-  { label: "Title A→Z",     sortBy: "title",            sortOrder: "ASC"  },
-  { label: "Title Z→A",     sortBy: "title",            sortOrder: "DESC" },
-  { label: "Author A→Z",    sortBy: "author",           sortOrder: "ASC"  },
-  { label: "Most Borrowed", sortBy: "borrowed_all_time", sortOrder: "DESC" },
-  { label: "Qty High→Low",  sortBy: "quantity",         sortOrder: "DESC" },
-  { label: "Qty Low→High",  sortBy: "quantity",         sortOrder: "ASC"  },
+  { label: "Newest First",   sortBy: "created_at",        sortOrder: "DESC" },
+  { label: "Oldest First",   sortBy: "created_at",        sortOrder: "ASC"  },
+  { label: "Title A→Z",      sortBy: "title",             sortOrder: "ASC"  },
+  { label: "Title Z→A",      sortBy: "title",             sortOrder: "DESC" },
+  { label: "Author A→Z",     sortBy: "author",            sortOrder: "ASC"  },
+  { label: "Most Borrowed",  sortBy: "borrowed_all_time", sortOrder: "DESC" },
+  { label: "Qty High→Low",   sortBy: "quantity",          sortOrder: "DESC" },
+  { label: "Qty Low→High",   sortBy: "quantity",          sortOrder: "ASC"  },
 ];
 
-// Modal: ADD BOOK
+// ── Image resize helper ───────────────────────────────
+function resizeImage(file, maxSize = 600) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const scale  = Math.min(1, maxSize / Math.max(img.width, img.height));
+        canvas.width  = img.width  * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+}
 
+// ── Image Upload Field component ──────────────────────
+// Used inside Add/Edit modals — upload from disk, shows preview
+function CoverUploadField({ value, onChange }) {
+  const fileRef = useRef(null);
+  const toast   = useToast();
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File must be under 10 MB");
+      return;
+    }
+    try {
+      const base64 = await resizeImage(file, 600);
+      onChange(base64);
+    } catch {
+      toast.error("Failed to process image");
+    }
+    e.target.value = ""; // allow re-upload of the same file
+  };
+
+  return (
+    <div className="cover-upload-wrap">
+      {/* Preview area */}
+      <div
+        className={`cover-upload-preview ${!value ? "cover-upload-preview--empty" : ""}`}
+        onClick={() => fileRef.current?.click()}
+        title="Click to upload cover image"
+      >
+        {value ? (
+          <img src={value} alt="Book cover preview" className="cover-upload-img" />
+        ) : (
+          <div className="cover-upload-placeholder">
+            <PictureOutlined className="cover-upload-icon" />
+            <span>Click to upload</span>
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="cover-upload-controls">
+        <button
+          type="button"
+          className="cover-upload-btn"
+          onClick={() => fileRef.current?.click()}
+        >
+          <UploadOutlined /> {value ? "Change image" : "Upload cover"}
+        </button>
+        {value && (
+          <button
+            type="button"
+            className="cover-upload-btn cover-upload-btn--clear"
+            onClick={() => onChange("")}
+          >
+            <CloseOutlined /> Remove
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFile}
+      />
+
+      <p className="cover-upload-hint">
+        JPG, PNG or WebP · max 10 MB · auto-resized to 600 px
+      </p>
+    </div>
+  );
+}
+
+// ── Modal: ADD BOOK ────────────────────────────────────
 function AddBookModal({ onClose, onAdded }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -56,8 +152,6 @@ function AddBookModal({ onClose, onAdded }) {
       publisher:     form.publisher.trim(),
       language:      form.language.trim(),
       location:      form.location.trim(),
-      book_cover:    form.book_cover.trim(),
-      author_avatar: form.author_avatar.trim(),
       description:   form.description.trim(),
     };
 
@@ -96,6 +190,16 @@ function AddBookModal({ onClose, onAdded }) {
         </div>
         <div className="bm-modal__body">
           <div className="edit-form-grid">
+
+            {/* ── Cover upload — spans full width on left ── */}
+            <div className="form-group form-full">
+              <label>Book Cover</label>
+              <CoverUploadField
+                value={form.book_cover}
+                onChange={v => set("book_cover", v)}
+              />
+            </div>
+
             <div className="form-group">
               <label>Book ID <span className="req">*</span></label>
               <input placeholder="e.g. BK021" value={form.id}
@@ -151,11 +255,6 @@ function AddBookModal({ onClose, onAdded }) {
               <input type="number" min="1" value={form.quantity}
                      onChange={e => set("quantity", e.target.value)} />
             </div>
-            <div className="form-group">
-              <label>Book Cover URL</label>
-              <input placeholder="https://..." value={form.book_cover}
-                     onChange={e => set("book_cover", e.target.value)} />
-            </div>
             <div className="form-group form-full">
               <label>Description</label>
               <textarea rows={3} placeholder="Book description..."
@@ -175,8 +274,7 @@ function AddBookModal({ onClose, onAdded }) {
   );
 }
 
-// Modal: VIEW
-
+// ── Modal: VIEW ────────────────────────────────────────
 function ViewModal({ book, onClose }) {
   if (!book) return null;
   return (
@@ -254,8 +352,7 @@ function ViewModal({ book, onClose }) {
   );
 }
 
-// Modal: EDIT
-
+// ── Modal: EDIT ────────────────────────────────────────
 function EditModal({ book, onClose, onSaved }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -272,7 +369,6 @@ function EditModal({ book, onClose, onSaved }) {
       publisher:   form.publisher?.trim()   || "",
       language:    form.language?.trim()    || "",
       location:    form.location?.trim()    || "",
-      book_cover:  form.book_cover?.trim()  || "",
       description: form.description?.trim() || "",
     };
 
@@ -305,6 +401,16 @@ function EditModal({ book, onClose, onSaved }) {
         </div>
         <div className="bm-modal__body">
           <div className="edit-form-grid">
+
+            {/* ── Cover upload ── */}
+            <div className="form-group form-full">
+              <label>Book Cover</label>
+              <CoverUploadField
+                value={form.book_cover || ""}
+                onChange={v => set("book_cover", v)}
+              />
+            </div>
+
             <div className="form-group form-full">
               <label>Book Title <span className="req">*</span></label>
               <input value={form.title || ""}
@@ -350,11 +456,6 @@ function EditModal({ book, onClose, onSaved }) {
               <input type="number" value={form.quantity || 0}
                      onChange={e => set("quantity", +e.target.value)} />
             </div>
-            <div className="form-group">
-              <label>Book Cover URL</label>
-              <input value={form.book_cover || ""}
-                     onChange={e => set("book_cover", e.target.value)} />
-            </div>
             <div className="form-group form-full">
               <label>Description</label>
               <textarea rows={3} value={form.description || ""}
@@ -373,8 +474,7 @@ function EditModal({ book, onClose, onSaved }) {
   );
 }
 
-// Modal: DELETE
-
+// ── Modal: DELETE ──────────────────────────────────────
 function DeleteModal({ book, onClose, onDeleted }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -431,8 +531,7 @@ function DeleteModal({ book, onClose, onDeleted }) {
   );
 }
 
-// Modal: ADD COPY (bulk)
-
+// ── Modal: ADD COPY (bulk) ─────────────────────────────
 function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
   const [form, setForm] = useState({ quantity: 1, condition: "good", notes: "" });
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
@@ -446,13 +545,9 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
   };
 
   const lastIndex = getLastIndex();
-
-  const previewBarcodes = () =>
-    Array.from({ length: Math.min(form.quantity, 5) }, (_, i) =>
-      `${book.id}-${String(lastIndex + i + 1).padStart(3, '0')}`
-    );
-
-  const previews = previewBarcodes();
+  const previews  = Array.from({ length: Math.min(form.quantity, 5) }, (_, i) =>
+    `${book.id}-${String(lastIndex + i + 1).padStart(3, '0')}`
+  );
 
   return (
     <div className="bm-overlay" onClick={onClose}>
@@ -467,29 +562,16 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
           <p className="copy-modal-book-name">Book: <strong>{book?.title}</strong></p>
           <div className="edit-form-grid">
             <div className="form-group form-full">
-              <label>
-                Number of Copies <span className="req">*</span>
-                <small style={{ color: "#8c8c8c", fontWeight: 400, marginLeft: "0.8rem" }}>
-                  (max 50)
-                </small>
+              <label>Number of Copies <span className="req">*</span>
+                <small style={{ color: "#8c8c8c", fontWeight: 400, marginLeft: "0.8rem" }}>(max 50)</small>
               </label>
               <div className="quantity-input-wrap">
                 <button type="button" className="qty-btn"
-                        onClick={() => set("quantity", Math.max(1, form.quantity - 1))}>
-                  −
-                </button>
-                <input
-                  type="number" min="1" max="50"
-                  value={form.quantity}
-                  onChange={e =>
-                    set("quantity", Math.min(50, Math.max(1, Number(e.target.value) || 1)))
-                  }
-                  className="qty-input"
-                />
+                        onClick={() => set("quantity", Math.max(1, form.quantity - 1))}>−</button>
+                <input type="number" min="1" max="50" value={form.quantity} className="qty-input"
+                       onChange={e => set("quantity", Math.min(50, Math.max(1, Number(e.target.value) || 1)))} />
                 <button type="button" className="qty-btn"
-                        onClick={() => set("quantity", Math.min(50, form.quantity + 1))}>
-                  +
-                </button>
+                        onClick={() => set("quantity", Math.min(50, form.quantity + 1))}>+</button>
               </div>
             </div>
 
@@ -497,9 +579,7 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
               <label>Condition</label>
               <select value={form.condition} onChange={e => set("condition", e.target.value)}>
                 {CONDITION_OPTIONS.map(c => (
-                  <option key={c} value={c}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </option>
+                  <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                 ))}
               </select>
             </div>
@@ -507,20 +587,16 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
             <div className="form-group form-full">
               <label>Notes <small>(optional)</small></label>
               <textarea rows={2} placeholder="e.g. New batch imported 2025"
-                        value={form.notes}
-                        onChange={e => set("notes", e.target.value)} />
+                        value={form.notes} onChange={e => set("notes", e.target.value)} />
             </div>
 
             <div className="form-group form-full">
               <label>Barcode Preview</label>
               <div className="barcode-preview">
-                {previews.map(bc => (
-                  <span key={bc} className="barcode-tag">{bc}</span>
-                ))}
+                {previews.map(bc => <span key={bc} className="barcode-tag">{bc}</span>)}
                 {form.quantity > 5 && (
                   <span className="barcode-more">
-                    +{form.quantity - 5} more
-                    {" "}(up to {book.id}-{String(lastIndex + form.quantity).padStart(3, '0')})
+                    +{form.quantity - 5} more (up to {book.id}-{String(lastIndex + form.quantity).padStart(3, '0')})
                   </span>
                 )}
               </div>
@@ -528,24 +604,14 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
           </div>
 
           <div className="copy-summary">
-            <div className="copy-summary__item">
-              <span>Will create</span>
-              <strong>{form.quantity} cop{form.quantity > 1 ? "ies" : "y"}</strong>
-            </div>
-            <div className="copy-summary__item">
-              <span>Condition</span>
-              <strong>{form.condition}</strong>
-            </div>
-            <div className="copy-summary__item">
-              <span>Status</span>
-              <strong style={{ color: "#389e0d" }}>Available</strong>
-            </div>
+            <div className="copy-summary__item"><span>Will create</span><strong>{form.quantity} cop{form.quantity > 1 ? "ies" : "y"}</strong></div>
+            <div className="copy-summary__item"><span>Condition</span><strong>{form.condition}</strong></div>
+            <div className="copy-summary__item"><span>Status</span><strong style={{ color: "#389e0d" }}>Available</strong></div>
           </div>
         </div>
         <div className="bm-modal__footer">
           <button className="bm-btn bm-btn--secondary" onClick={onClose}>Cancel</button>
-          <button className="bm-btn bm-btn--primary"
-                  disabled={form.quantity < 1}
+          <button className="bm-btn bm-btn--primary" disabled={form.quantity < 1}
                   onClick={() => { onAdd({ ...form, notes: form.notes.trim() }); onClose(); }}>
             <PlusOutlined /> Add {form.quantity} {form.quantity > 1 ? "Copies" : "Copy"}
           </button>
@@ -555,8 +621,7 @@ function AddCopyModalInner({ book, onClose, onAdd, copies = [] }) {
   );
 }
 
-// Modal: EDIT COPY
-
+// ── Modal: EDIT COPY ───────────────────────────────────
 function EditCopyModalInner({ copy, onClose, onSave }) {
   const [form, setForm] = useState({ ...copy });
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
@@ -565,9 +630,7 @@ function EditCopyModalInner({ copy, onClose, onSave }) {
     <div className="bm-overlay" onClick={onClose}>
       <div className="bm-modal bm-modal--sm" onClick={e => e.stopPropagation()}>
         <div className="bm-modal__header">
-          <div className="bm-modal__header-title">
-            <EditOutlined /><span>Edit Copy</span>
-          </div>
+          <div className="bm-modal__header-title"><EditOutlined /><span>Edit Copy</span></div>
           <button className="bm-btn-close" onClick={onClose}><CloseOutlined /></button>
         </div>
         <div className="bm-modal__body">
@@ -576,17 +639,13 @@ function EditCopyModalInner({ copy, onClose, onSave }) {
             <div className="form-group">
               <label>Status</label>
               <select value={form.status} onChange={e => set("status", e.target.value)}>
-                {STATUS_OPTIONS.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="form-group">
               <label>Condition</label>
               <select value={form.condition} onChange={e => set("condition", e.target.value)}>
-                {CONDITION_OPTIONS.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {CONDITION_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="form-group form-full">
@@ -608,8 +667,7 @@ function EditCopyModalInner({ copy, onClose, onSave }) {
   );
 }
 
-// Modal: MANAGE COPIES
-
+// ── Modal: MANAGE COPIES ───────────────────────────────
 function ManageCopiesModal({ book, onClose }) {
   const toast = useToast();
   const [copies,   setCopies]   = useState([]);
@@ -631,67 +689,20 @@ function ManageCopiesModal({ book, onClose }) {
     }
   };
 
-  const handleAddCopy = async (form) => {
-    try {
-      await bookService.addCopy(book.id, form);
-      toast.success(`${form.quantity} cop${form.quantity > 1 ? "ies" : "y"} added!`);
-      loadCopies();
-    } catch (err) {
-      toast.error(err.message || "Failed to add copies");
-    }
-  };
+  const handleAddCopy   = async (form)    => { try { await bookService.addCopy(book.id, form); toast.success(`${form.quantity} cop${form.quantity > 1 ? "ies" : "y"} added!`); loadCopies(); } catch (err) { toast.error(err.message || "Failed to add copies"); } };
+  const handleSaveCopy  = async (updated) => { try { await bookService.updateCopy(updated.id, updated); toast.success("Copy updated!"); loadCopies(); } catch (err) { toast.error(err.message || "Failed to update copy"); } };
+  const handleDeleteCopy= async (copyId)  => { try { await bookService.deleteCopy(copyId); toast.success("Copy deleted!"); loadCopies(); } catch (err) { toast.error(err.message || "Failed to delete copy"); } };
 
-  const handleSaveCopy = async (updated) => {
-    try {
-      await bookService.updateCopy(updated.id, updated);
-      toast.success("Copy updated!");
-      loadCopies();
-    } catch (err) {
-      toast.error(err.message || "Failed to update copy");
-    }
-  };
-
-  const handleDeleteCopy = async (copyId) => {
-    try {
-      await bookService.deleteCopy(copyId);
-      toast.success("Copy deleted!");
-      loadCopies();
-    } catch (err) {
-      toast.error(err.message || "Failed to delete copy");
-    }
-  };
-
-  const statusStyle = {
-    available: { bg: "#f6ffed", color: "#389e0d", border: "#b7eb8f" },
-    borrowed:  { bg: "#fff7e6", color: "#d46b08", border: "#ffd591" },
-    damaged:   { bg: "#fff1f0", color: "#cf1322", border: "#ffa39e" },
-    lost:      { bg: "#f5f5f5", color: "#595959", border: "#d9d9d9" },
-  };
-  const conditionStyle = {
-    excellent: { bg: "#e6f4ff", color: "#0958d9", border: "#91caff" },
-    good:      { bg: "#f6ffed", color: "#389e0d", border: "#b7eb8f" },
-    fair:      { bg: "#fff7e6", color: "#d46b08", border: "#ffd591" },
-    poor:      { bg: "#fff1f0", color: "#cf1322", border: "#ffa39e" },
-  };
+  const statusStyle    = { available: { bg: "#f6ffed", color: "#389e0d", border: "#b7eb8f" }, borrowed: { bg: "#fff7e6", color: "#d46b08", border: "#ffd591" }, damaged: { bg: "#fff1f0", color: "#cf1322", border: "#ffa39e" }, lost: { bg: "#f5f5f5", color: "#595959", border: "#d9d9d9" } };
+  const conditionStyle = { excellent: { bg: "#e6f4ff", color: "#0958d9", border: "#91caff" }, good: { bg: "#f6ffed", color: "#389e0d", border: "#b7eb8f" }, fair: { bg: "#fff7e6", color: "#d46b08", border: "#ffd591" }, poor: { bg: "#fff1f0", color: "#cf1322", border: "#ffa39e" } };
 
   const Badge = ({ text, styleMap }) => {
     const s = styleMap[text?.toLowerCase()] || { bg: "#f5f5f5", color: "#333", border: "#d9d9d9" };
-    return (
-      <span style={{
-        display: "inline-flex", alignItems: "center",
-        padding: "0.3rem 1rem", borderRadius: "2rem",
-        fontSize: "1.25rem", fontWeight: "600",
-        background: s.bg, color: s.color,
-        border: `0.1rem solid ${s.border}`,
-      }}>
-        {text}
-      </span>
-    );
+    return <span style={{ display:"inline-flex", alignItems:"center", padding:"0.3rem 1rem", borderRadius:"2rem", fontSize:"1.25rem", fontWeight:"600", background:s.bg, color:s.color, border:`0.1rem solid ${s.border}` }}>{text}</span>;
   };
 
   const availableCount = copies.filter(c => c.status === "available").length;
   const borrowedCount  = copies.filter(c => c.status === "borrowed").length;
-
   if (!book) return null;
 
   return (
@@ -700,9 +711,7 @@ function ManageCopiesModal({ book, onClose }) {
         <div className="bm-modal bm-modal--copies" onClick={e => e.stopPropagation()}>
           <div className="bm-modal__header">
             <div>
-              <div className="bm-modal__header-title">
-                <CopyOutlined /><span>Manage Copies</span>
-              </div>
+              <div className="bm-modal__header-title"><CopyOutlined /><span>Manage Copies</span></div>
               <p className="bm-modal__subtitle">{book.title}</p>
             </div>
             <button className="bm-btn-close" onClick={onClose}><CloseOutlined /></button>
@@ -714,8 +723,7 @@ function ManageCopiesModal({ book, onClose }) {
             <span className="cs-green">Available: <strong>{availableCount}</strong></span>
             <span className="cs-sep" />
             <span className="cs-orange">Borrowed: <strong>{borrowedCount}</strong></span>
-            <button className="bm-btn bm-btn--primary copies-add-btn"
-                    onClick={() => setShowAdd(true)}>
+            <button className="bm-btn bm-btn--primary copies-add-btn" onClick={() => setShowAdd(true)}>
               <PlusOutlined /> Add Copies
             </button>
           </div>
@@ -729,15 +737,7 @@ function ManageCopiesModal({ book, onClose }) {
               </div>
             ) : (
               <table className="copies-table">
-                <thead>
-                  <tr>
-                    <th>Barcode</th>
-                    <th>Status</th>
-                    <th>Condition</th>
-                    <th>Notes</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Barcode</th><th>Status</th><th>Condition</th><th>Notes</th><th>Action</th></tr></thead>
                 <tbody>
                   {copies.map(copy => (
                     <tr key={copy.id}>
@@ -746,14 +746,8 @@ function ManageCopiesModal({ book, onClose }) {
                       <td><Badge text={copy.condition} styleMap={conditionStyle} /></td>
                       <td>{copy.notes || <span className="text-muted">—</span>}</td>
                       <td className="copies-actions">
-                        <button className="copies-action-btn copies-action-btn--edit"
-                                onClick={() => setEditCopy(copy)} title="Edit">
-                          <EditOutlined />
-                        </button>
-                        <button className="copies-action-btn copies-action-btn--del"
-                                onClick={() => handleDeleteCopy(copy.id)} title="Delete">
-                          <DeleteOutlined />
-                        </button>
+                        <button className="copies-action-btn copies-action-btn--edit" onClick={() => setEditCopy(copy)} title="Edit"><EditOutlined /></button>
+                        <button className="copies-action-btn copies-action-btn--del" onClick={() => handleDeleteCopy(copy.id)} title="Delete"><DeleteOutlined /></button>
                       </td>
                     </tr>
                   ))}
@@ -761,60 +755,36 @@ function ManageCopiesModal({ book, onClose }) {
               </table>
             )}
           </div>
-
           <div className="bm-modal__footer">
             <button className="bm-btn bm-btn--secondary" onClick={onClose}>Close</button>
           </div>
         </div>
       </div>
 
-      {showAdd && (
-        <AddCopyModalInner
-          book={book} copies={copies}
-          onClose={() => setShowAdd(false)}
-          onAdd={handleAddCopy}
-        />
-      )}
-      {editCopy && (
-        <EditCopyModalInner
-          copy={editCopy}
-          onClose={() => setEditCopy(null)}
-          onSave={handleSaveCopy}
-        />
-      )}
+      {showAdd  && <AddCopyModalInner book={book} copies={copies} onClose={() => setShowAdd(false)} onAdd={handleAddCopy} />}
+      {editCopy && <EditCopyModalInner copy={editCopy} onClose={() => setEditCopy(null)} onSave={handleSaveCopy} />}
     </>
   );
 }
 
-// Columns
-
+// ── Columns ────────────────────────────────────────────
 const BOOK_COLUMNS = [
   { key: "id", label: "Book ID" },
   {
-    key: "title",
-    label: "Book Name",
-    sortable: false,
+    key: "title", label: "Book Name", sortable: false,
     render: (value, row) => (
       <div className="book-info">
-        <img
-          src={row.book_cover || "https://placehold.co/36x50?text=N/A"}
-          alt={value} className="book-cover"
-          onError={e => { e.target.src = "https://placehold.co/36x50?text=N/A"; }}
-        />
+        <img src={row.book_cover || "https://placehold.co/36x50?text=N/A"} alt={value} className="book-cover"
+             onError={e => { e.target.src = "https://placehold.co/36x50?text=N/A"; }} />
         <span>{value}</span>
       </div>
     ),
   },
   {
-    key: "author",
-    label: "Author",
-    sortable: false,
+    key: "author", label: "Author", sortable: false,
     render: (value, row) => (
       <div className="author-info">
-        <img
-          src={row.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`}
-          alt={value} className="author-avatar"
-        />
+        <img src={row.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`} alt={value} className="author-avatar" />
         <span>{value || "—"}</span>
       </div>
     ),
@@ -824,9 +794,7 @@ const BOOK_COLUMNS = [
   { key: "quantity", label: "Quantity", sortable: false, render: v => <strong>{v}</strong> },
 ];
 
-
-// Main Page
-
+// ── Main Page ──────────────────────────────────────────
 const BookManagement = () => {
   const toast = useToast();
 
@@ -840,12 +808,12 @@ const BookManagement = () => {
   const [sortOrder,    setSortOrder]    = useState("DESC");
   const [genreOptions, setGenreOptions] = useState([]);
 
-  //  Refs để tránh stale closure — luôn giữ giá trị mới nhất
   const sortByRef    = useRef("created_at");
   const sortOrderRef = useRef("DESC");
   const searchRef    = useRef("");
   const genreRef     = useRef("");
   const pageRef      = useRef(1);
+  const searchTimer  = useRef(null);
 
   const [viewBook,   setViewBook]   = useState(null);
   const [editBook,   setEditBook]   = useState(null);
@@ -853,28 +821,14 @@ const BookManagement = () => {
   const [deleteBook, setDeleteBook] = useState(null);
   const [showAdd,    setShowAdd]    = useState(false);
 
-  const searchTimer = useRef(null);
-
-  // ── Load genres ───────────────────────────────────────
   const loadGenres = async () => {
-    try {
-      const res = await bookService.getGenres();
-      setGenreOptions(res.genres || []);
-    } catch { /* không block UI */ }
+    try { const res = await bookService.getGenres(); setGenreOptions(res.genres || []); } catch {}
   };
 
-  // ── Load sách ─────────────────────────────────────────
   const loadBooks = useCallback(async (p, s, g, sb, so) => {
     try {
       setLoading(true);
-      const res = await bookService.getAll({
-        page:      p,
-        limit:     PAGE_SIZE,
-        search:    s,
-        genre:     g,
-        sortBy:    sb,
-        sortOrder: so,
-      });
+      const res = await bookService.getAll({ page: p, limit: PAGE_SIZE, search: s, genre: g, sortBy: sb, sortOrder: so });
       setBooks(res.books || []);
       setTotal(res.total || 0);
     } catch {
@@ -884,75 +838,48 @@ const BookManagement = () => {
     }
   }, []);
 
-  useEffect(() => {
-    loadBooks(1, "", "", "created_at", "DESC");
-    loadGenres();
-  }, []);
+  useEffect(() => { loadBooks(1, "", "", "created_at", "DESC"); loadGenres(); }, []);
 
-  // ── Search debounce 400ms ─────────────────────────────
   const handleSearch = (value) => {
-    const trimmed = value.trimStart();
-    setSearch(trimmed);
-    searchRef.current = trimmed;      
-    setPage(1);
-    pageRef.current = 1;              
+    const v = value.trimStart();
+    setSearch(v); searchRef.current = v;
+    setPage(1);   pageRef.current   = 1;
     clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      loadBooks(1, trimmed.trim(), genreRef.current, sortByRef.current, sortOrderRef.current);
-    }, 400);
+    searchTimer.current = setTimeout(() => loadBooks(1, v.trim(), genreRef.current, sortByRef.current, sortOrderRef.current), 400);
   };
 
-  // ── Filter genre ──────────────────────────────────────
   const handleGenreChange = (value) => {
-    setGenre(value);
-    genreRef.current = value;          
-    setPage(1);
-    pageRef.current = 1;              
+    setGenre(value); genreRef.current = value;
+    setPage(1);      pageRef.current  = 1;
     loadBooks(1, searchRef.current, value, sortByRef.current, sortOrderRef.current);
   };
 
-  // ── Sort ──────────────────────────────────────────────
   const handleSortChange = (val) => {
     const [sb, so] = val.split("__");
-    setSortBy(sb);        sortByRef.current    = sb;   
-    
-    setSortOrder(so);     sortOrderRef.current = so;  
-    
-    setPage(1);           pageRef.current      = 1;    
+    setSortBy(sb); sortByRef.current = sb; setSortOrder(so); sortOrderRef.current = so;
+    setPage(1);    pageRef.current   = 1;
     loadBooks(1, searchRef.current, genreRef.current, sb, so);
   };
 
-  // ── Phân trang ────────────────────────────────────────
   const handlePageChange = (p) => {
-    setPage(p);
-    pageRef.current = p;               // ✅ sync ref
-    // ✅ dùng ref — không bị stale dù state chưa re-render
+    setPage(p); pageRef.current = p;
     loadBooks(p, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
   };
 
-  // ── Reset tất cả ──────────────────────────────────────
   const handleReset = () => {
-    setSearch("");        searchRef.current    = "";
-    setGenre("");         genreRef.current     = "";
-    setSortBy("created_at");   sortByRef.current    = "created_at";
-    setSortOrder("DESC");      sortOrderRef.current = "DESC";
-    setPage(1);                pageRef.current      = 1;
+    setSearch(""); searchRef.current = ""; setGenre(""); genreRef.current = "";
+    setSortBy("created_at"); sortByRef.current = "created_at";
+    setSortOrder("DESC");    sortOrderRef.current = "DESC";
+    setPage(1);              pageRef.current = 1;
     loadBooks(1, "", "", "created_at", "DESC");
   };
 
-  // ── Reload sau edit/add ───────────────────────────────
-  const reload = () =>
-    loadBooks(pageRef.current, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
+  const reload = () => loadBooks(pageRef.current, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
 
-  // ── Reload sau delete ─────────────────────────────────
   const reloadAfterDelete = () => {
-    const newTotal   = total - 1;
-    const maxPage    = Math.max(1, Math.ceil(newTotal / PAGE_SIZE));
+    const maxPage    = Math.max(1, Math.ceil((total - 1) / PAGE_SIZE));
     const targetPage = pageRef.current > maxPage ? maxPage : pageRef.current;
-    if (targetPage !== pageRef.current) {
-      setPage(targetPage);
-      pageRef.current = targetPage;
-    }
+    if (targetPage !== pageRef.current) { setPage(targetPage); pageRef.current = targetPage; }
     loadBooks(targetPage, searchRef.current, genreRef.current, sortByRef.current, sortOrderRef.current);
   };
 
@@ -967,86 +894,43 @@ const BookManagement = () => {
 
   return (
     <div className="book-management">
-
-      {/* ── Header ── */}
       <div className="header">
         <h1 className="tittle">Books Management</h1>
         <div className="header-actions">
-          <Filter
-            filterName="Genre"
-            options={genreOptions}
-            value={genre}
-            onChange={handleGenreChange}
-          />
-
-          <Select
-            value={`${sortBy}__${sortOrder}`}
-            style={{ width: 180 }}
-            onChange={handleSortChange}
-            suffixIcon={
-              <SortAscendingOutlined style={{ color: "#088ef5", fontSize: "1.5rem" }} />
-            }
-            options={SORT_OPTIONS.map(o => ({
-              label: o.label,
-              value: `${o.sortBy}__${o.sortOrder}`,
-            }))}
-          />
-
-          <SearchBar
-            value={search}
-            onChange={handleSearch}
-            placeholder="Search by title, author..."
-          />
-
-          {hasFilter && (
-            <button className="btn-reset" onClick={handleReset}>✕ Reset</button>
-          )}
-
-          <button className="btn-add" onClick={() => setShowAdd(true)}>
-            <PlusOutlined /> Add New
-          </button>
+          <Filter filterName="Genre" options={genreOptions} value={genre} onChange={handleGenreChange} />
+          <Select value={`${sortBy}__${sortOrder}`} style={{ width: 180 }} onChange={handleSortChange}
+            suffixIcon={<SortAscendingOutlined style={{ color: "#088ef5", fontSize: "1.5rem" }} />}
+            options={SORT_OPTIONS.map(o => ({ label: o.label, value: `${o.sortBy}__${o.sortOrder}` }))} />
+          <SearchBar value={search} onChange={handleSearch} placeholder="Search by title, author..." />
+          {hasFilter && <button className="btn-reset" onClick={handleReset}>✕ Reset</button>}
+          <button className="btn-add" onClick={() => setShowAdd(true)}><PlusOutlined /> Add New</button>
         </div>
       </div>
 
-      {/* ── Filter summary ── */}
       {(search || genre) && (
         <div className="filter-summary">
           {search && <span className="filter-tag">🔍 "{search}"</span>}
           {genre  && <span className="filter-tag">📂 {genre}</span>}
-          <span className="filter-count">
-            {total} result{total !== 1 ? "s" : ""} found
-          </span>
+          <span className="filter-count">{total} result{total !== 1 ? "s" : ""} found</span>
         </div>
       )}
 
-      {/* ── Table ── */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "6rem" }}>
-          <Spin size="large" />
-        </div>
+        <div style={{ textAlign: "center", padding: "6rem" }}><Spin size="large" /></div>
       ) : books.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📚</div>
           <p>{search || genre ? "No books match your search" : "No books found"}</p>
-          {(search || genre) && (
-            <button className="btn-reset" onClick={handleReset}>Clear filters</button>
-          )}
+          {(search || genre) && <button className="btn-reset" onClick={handleReset}>Clear filters</button>}
         </div>
       ) : (
         <Table columns={BOOK_COLUMNS} rows={books} actions={ACTIONS} />
       )}
 
-      {/* ── Pagination ── */}
       {!loading && books.length > 0 && (
-        <CustomPagination
-          total={total}
-          pageSize={PAGE_SIZE}
-          currentPage={page}
-          onChange={handlePageChange}
-        />
+        <CustomPagination total={total} pageSize={PAGE_SIZE} currentPage={page} onChange={handlePageChange} />
       )}
 
-      {/* ── Modals ── */}
       {showAdd    && <AddBookModal      onClose={() => setShowAdd(false)}    onAdded={reload}             />}
       {viewBook   && <ViewModal         book={viewBook}   onClose={() => setViewBook(null)}               />}
       {editBook   && <EditModal         book={editBook}   onClose={() => setEditBook(null)}   onSaved={reload} />}

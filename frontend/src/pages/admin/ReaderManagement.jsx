@@ -530,7 +530,7 @@ const ReaderManagement = () => {
       render: (value, row) => (
         <div className="rm-reader-cell">
           <img
-            src={row.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`}
+            src={row.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}` }
             alt={value} className="rm-avatar"
             onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${value}`; }}
           />

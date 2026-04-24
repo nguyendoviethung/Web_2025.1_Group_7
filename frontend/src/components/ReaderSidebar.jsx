@@ -4,26 +4,26 @@ import { Layout, Menu, Modal, Badge, Rate, Spin } from "antd";
 import {
   LogoutOutlined, HomeOutlined, BookOutlined, UserOutlined,
   HistoryOutlined, MessageOutlined, BellOutlined, SaveOutlined,
-  CheckOutlined, StarOutlined, CloseOutlined,
+  CheckOutlined, StarFilled, CloseOutlined, EditOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import { logout } from "../services/authService";
+import { logout }          from "../services/authService";
 import notificationService from "../services/notificationService";
 import reviewService       from "../services/reviewService";
 import bookService         from "../services/bookService";
-import { useToast } from "./Toast";
+import { useToast }        from "./Toast";
 import logo from "../assets/LibraryLogo.svg";
 import "../style/ReaderSidebar.scss";
 
 const { Sider } = Layout;
 
 const MENU = [
-  { key: "home",         icon: <HomeOutlined />,    label: "Home",         path: "/reader/home" },
-  { key: "books",        icon: <BookOutlined />,    label: "Books",        path: "/reader/books" },
+  { key: "home",         icon: <HomeOutlined />,    label: "Home",         path: "/reader/home"         },
+  { key: "books",        icon: <BookOutlined />,    label: "Books",        path: "/reader/books"        },
   { key: "reservations", icon: <SaveOutlined />,    label: "Reservations", path: "/reader/reservations" },
-  { key: "history",      icon: <HistoryOutlined />, label: "My Borrows",   path: "/reader/history" },
-  { key: "chat",         icon: <MessageOutlined />, label: "Chat",         path: "/reader/chat" },
-  { key: "profile",      icon: <UserOutlined />,    label: "My Profile",   path: "/reader/profile" },
+  { key: "history",      icon: <HistoryOutlined />, label: "My Borrows",   path: "/reader/history"      },
+  { key: "chat",         icon: <MessageOutlined />, label: "Chat",         path: "/reader/chat"         },
+  { key: "profile",      icon: <UserOutlined />,    label: "My Profile",   path: "/reader/profile"      },
 ];
 
 const fmtTime = (d) =>
@@ -32,100 +32,163 @@ const fmtTime = (d) =>
     day: "2-digit",  month: "2-digit",
   });
 
-// ── Review Modal Component ────────────────────────────
-function ReviewModal({ bookId, onClose, onSuccess }) {
+const STAR_LABELS = ["", "Poor", "Fair", "Good", "Very good", "Excellent"];
+
+// ── Notification title constants (must match backend) ──
+// Used to decide whether to open review form on click
+const TITLE_UPDATE_REVIEW = "Would you like to update your review?";
+
+// ─────────────────────────────────────────────────────────
+// Review Form Modal
+// isUpdateMode = true  → pre-fill existing review, "Update" button
+// isUpdateMode = false → blank form, "Submit" button
+// ─────────────────────────────────────────────────────────
+function ReviewFormModal({ bookId, isUpdateMode, onClose, onDone }) {
   const toast = useToast();
-  const [book,    setBook]    = useState(null);
-  const [rating,  setRating]  = useState(0);
-  const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [fetching,setFetching]= useState(true);
+
+  const [book,     setBook]     = useState(null);
+  const [rating,   setRating]   = useState(0);
+  const [content,  setContent]  = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    bookService.getById(bookId)
-      .then(res => setBook(res.book))
-      .catch(() => toast.error("Failed to load book info"))
+    Promise.all([
+      bookService.getById(bookId),
+      isUpdateMode ? reviewService.getMyReview(bookId) : Promise.resolve(null),
+    ])
+      .then(([bookRes, reviewRes]) => {
+        setBook(bookRes.book);
+        if (isUpdateMode && reviewRes?.review) {
+          setRating(reviewRes.review.rating);
+          setContent(reviewRes.review.content || "");
+        }
+      })
+      .catch(() => {})
       .finally(() => setFetching(false));
-  }, [bookId]);
+  }, [bookId, isUpdateMode]);
 
   const handleSubmit = async () => {
-    if (!rating) { toast.warning("Please select a star rating"); return; }
-    setLoading(true);
+    if (!rating) { toast.warning("Please choose a star rating first"); return; }
+    setSaving(true);
     try {
-      await reviewService.upsert({ book_id: bookId, rating, content: content.trim() });
-      toast.success("Thank you for your review! 🎉");
-      onSuccess();
+      await reviewService.upsert({ book_id: bookId, rating, content: content.trim() || null });
+      toast.success(isUpdateMode ? "Review updated! 🎉" : "Review submitted! Thank you 🎉");
+      onDone();
       onClose();
     } catch (err) {
-      toast.error(err.message || "Failed to submit review");
+      toast.error(err.message || "Failed to save review");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  return (
-    <div className="review-modal-overlay" onClick={onClose}>
-      <div className="review-modal-box" onClick={e => e.stopPropagation()}>
-        <div className="review-modal-header">
-          <div className="review-modal-title">
-            <StarOutlined /> Rate this book
+  return createPortal(
+    <div className="rv-overlay" onClick={onClose}>
+      <div className="rv-box" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="rv-header">
+          <div className="rv-header-title">
+            {isUpdateMode
+              ? <><EditOutlined className="rv-header-icon" /> Update your review</>
+              : <><StarFilled   className="rv-header-icon" /> Share your thoughts</>
+            }
           </div>
-          <button className="review-modal-close" onClick={onClose}><CloseOutlined /></button>
+          <button className="rv-close" onClick={onClose}><CloseOutlined /></button>
         </div>
 
-        {fetching ? (
-          <div style={{ textAlign: "center", padding: "3rem" }}><Spin /></div>
-        ) : (
-          <div className="review-modal-body">
-            {book && (
-              <div className="review-modal-book">
-                <img
-                  src={book.book_cover || "https://placehold.co/56x80?text=N/A"}
-                  alt={book.title}
-                  onError={e => { e.target.src = "https://placehold.co/56x80?text=N/A"; }}
-                />
-                <div>
-                  <div className="review-modal-book-title">{book.title}</div>
-                  <div className="review-modal-book-author">{book.author}</div>
+        {/* Body */}
+        <div className="rv-body">
+          {fetching ? (
+            <div className="rv-loading"><Spin size="large" /></div>
+          ) : (
+            <>
+              {/* Book card */}
+              {book && (
+                <div className="rv-book-card">
+                  <img
+                    src={book.book_cover || "https://placehold.co/52x72?text=N/A"}
+                    alt={book.title}
+                    className="rv-book-cover"
+                    onError={e => { e.target.src = "https://placehold.co/52x72?text=N/A"; }}
+                  />
+                  <div className="rv-book-info">
+                    <div className="rv-book-title">{book.title}</div>
+                    <div className="rv-book-author">{book.author || "Unknown author"}</div>
+                    {isUpdateMode && (
+                      <div className="rv-update-badge">
+                        <EditOutlined /> Updating previous review
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              {/* Stars */}
+              <div className="rv-stars-wrap">
+                <span className="rv-stars-label">
+                  {isUpdateMode ? "Your updated rating" : "Your rating"}
+                </span>
+                <Rate
+                  value={rating}
+                  onChange={setRating}
+                  style={{ fontSize: "3.2rem", color: "#faad14" }}
+                />
+                <span className="rv-stars-hint">
+                  {STAR_LABELS[rating] || "Tap a star to rate"}
+                </span>
               </div>
-            )}
 
-            <div className="review-modal-rating-wrap">
-              <span>Your Rating:</span>
-              <Rate
-                value={rating}
-                onChange={setRating}
-                style={{ fontSize: "2.8rem", color: "#faad14" }}
-              />
-            </div>
+              {/* Comment */}
+              <div className="rv-comment-wrap">
+                <label className="rv-comment-label">
+                  {isUpdateMode ? "Update your comment" : "Your thoughts"}
+                  <span className="rv-optional"> (optional)</span>
+                </label>
+                <textarea
+                  className="rv-textarea"
+                  placeholder={
+                    isUpdateMode
+                      ? "Update your thoughts about this book..."
+                      : "What did you like or dislike? Your review helps other readers..."
+                  }
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </>
+          )}
+        </div>
 
-            <textarea
-              className="review-modal-textarea"
-              placeholder="Share your thoughts about this book... (optional)"
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              rows={3}
-            />
+        {/* Footer */}
+        {!fetching && (
+          <div className="rv-footer">
+            <button className="rv-btn rv-btn--ghost" onClick={onClose}>
+              Maybe later
+            </button>
+            <button
+              className="rv-btn rv-btn--submit"
+              onClick={handleSubmit}
+              disabled={saving || !rating}
+            >
+              {saving
+                ? <Spin size="small" />
+                : isUpdateMode ? "Update Review" : "Submit Review"
+              }
+            </button>
           </div>
         )}
-
-        <div className="review-modal-footer">
-          <button className="review-modal-btn-cancel" onClick={onClose}>Cancel</button>
-          <button
-            className="review-modal-btn-submit"
-            onClick={handleSubmit}
-            disabled={loading || !rating}
-          >
-            {loading ? <Spin size="small" /> : "Submit Review"}
-          </button>
-        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
-// ── Main Sidebar Component ────────────────────────────
+// ─────────────────────────────────────────────────────────
+// Main Sidebar
+// ─────────────────────────────────────────────────────────
 export default function ReaderSidebar() {
   const navigate   = useNavigate();
   const location   = useLocation();
@@ -133,123 +196,168 @@ export default function ReaderSidebar() {
   const panelRef   = useRef(null);
   const triggerRef = useRef(null);
 
-  const [showConfirm,    setShowConfirm]    = useState(false);
-  const [logoutLoading,  setLogoutLoading]  = useState(false);
-  const [unreadNotif,    setUnreadNotif]    = useState(0);
-  const [notifications,  setNotifications]  = useState([]);
-  const [notifOpen,      setNotifOpen]      = useState(false);
-  const [loadingNotif,   setLoadingNotif]   = useState(false);
-  const [panelStyle,     setPanelStyle]     = useState({});
-  const [reviewModal,    setReviewModal]    = useState({ open: false, bookId: null, notifId: null });
+  const [showConfirm,   setShowConfirm]   = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // Notification state
+  const [unreadCount,   setUnreadCount]   = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [panelOpen,     setPanelOpen]     = useState(false);
+  const [panelLoading,  setPanelLoading]  = useState(false);
+  const [panelPos,      setPanelPos]      = useState({});
+
+  // Review modal: { open, bookId, isUpdateMode }
+  const [reviewModal, setReviewModal] = useState({
+    open: false, bookId: null, isUpdateMode: false,
+  });
 
   const activeKey = MENU.find(m => location.pathname.startsWith(m.path))?.key || "home";
 
-  // ── Proactive unread count polling (every 15 seconds) ─
-  const fetchUnreadCount = useCallback(async () => {
+  // ── Poll unread every 15 s ────────────────────────────
+  const fetchUnread = useCallback(async () => {
     try {
       const res = await notificationService.getUnreadCount();
-      setUnreadNotif(res.unread_count ?? 0);
+      setUnreadCount(res.unread_count ?? 0);
     } catch {}
   }, []);
 
   useEffect(() => {
-    fetchUnreadCount(); // immediate on mount
-    const id = setInterval(fetchUnreadCount, 15000);
+    fetchUnread();
+    const id = setInterval(fetchUnread, 15000);
     return () => clearInterval(id);
-  }, [fetchUnreadCount]);
+  }, [fetchUnread]);
 
-  // ── Close panel on outside click ──────────────────────
+  // ── Panel position — centred on bell button ───────────
+  const updatePos = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect    = triggerRef.current.getBoundingClientRect();
+    const PANEL_W = 360;
+    const PANEL_H = 500;
+    const GAP     = 14;
+    const PAD     = 16;
+
+    const left     = Math.max(PAD, Math.min(rect.right + GAP, window.innerWidth - PANEL_W - PAD));
+    const btnMid   = rect.top + rect.height / 2;
+    const idealTop = btnMid - PANEL_H / 2;
+    const top      = Math.max(PAD, Math.min(idealTop, window.innerHeight - PANEL_H - PAD));
+
+    setPanelPos({ left: `${left}px`, top: `${top}px` });
+  }, []);
+
+  // Close on outside click
   useEffect(() => {
-    if (!notifOpen) return;
+    if (!panelOpen) return;
     const handler = (e) => {
-      if (!panelRef.current?.contains(e.target) && !e.target.closest(".rs-notif-trigger")) {
-        setNotifOpen(false);
-      }
+      if (panelRef.current?.contains(e.target)) return;
+      if (e.target.closest(".rs-notif-trigger")) return;
+      setPanelOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [notifOpen]);
+  }, [panelOpen]);
 
-  // ── Position panel next to trigger button ─────────────
-  const updatePanelPosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect         = triggerRef.current.getBoundingClientRect();
-    const panelWidth   = 360;
-    const panelHeight  = 480;
-    const gap          = 12;
-    const vp           = 16;
-
-    const left = Math.min(rect.right + gap, window.innerWidth - panelWidth - vp);
-    // Align panel top with button top; clamp so it doesn't go off screen
-    const top  = Math.min(
-      Math.max(rect.top, vp),
-      window.innerHeight - panelHeight - vp
-    );
-
-    setPanelStyle({ left: `${Math.max(vp, left)}px`, top: `${top}px` });
-  }, []);
-
+  // Reposition on resize / scroll
   useEffect(() => {
-    if (!notifOpen) return;
-    updatePanelPosition();
-    window.addEventListener("resize", updatePanelPosition);
-    window.addEventListener("scroll", updatePanelPosition, true);
+    if (!panelOpen) return;
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
     return () => {
-      window.removeEventListener("resize", updatePanelPosition);
-      window.removeEventListener("scroll", updatePanelPosition, true);
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
     };
-  }, [notifOpen, updatePanelPosition]);
+  }, [panelOpen, updatePos]);
 
-  // ── Open notification panel ───────────────────────────
-  const openNotifPanel = async () => {
-    const opening = !notifOpen;
-    setNotifOpen(opening);
-    if (!opening) return;
+  // ── Toggle panel ──────────────────────────────────────
+  const togglePanel = async () => {
+    if (panelOpen) { setPanelOpen(false); return; }
 
-    setLoadingNotif(true);
+    setPanelOpen(true);
+    updatePos();
+    setPanelLoading(true);
     try {
       const res = await notificationService.getAll({ limit: 30 });
       setNotifications(res.notifications || []);
-      setUnreadNotif(res.unread_count ?? 0);
+      setUnreadCount(res.unread_count ?? 0);
     } catch {
       toast.error("Failed to load notifications");
     } finally {
-      setLoadingNotif(false);
+      setPanelLoading(false);
     }
   };
 
-  // ── Handle notification click ─────────────────────────
+  // ── Mark single notification read ─────────────────────
+  const markOneRead = async (notif) => {
+    if (notif.is_read) return;
+    try {
+      await notificationService.markRead(notif.id);
+      setNotifications(prev =>
+        prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch {}
+  };
+
+  // ── Notification click ────────────────────────────────
+  // reference_id = book_id → review notification
+  //
+  // FIRST-TIME invite ("Share your thoughts"):
+  //   • Already reviewed → lock: toast info, don't open form
+  //   • Not yet reviewed → open NEW review form
+  //
+  // UPDATE invite ("Would you like to update your review?"):
+  //   • review.updated_at > notif.created_at → user already updated
+  //     after this notification → lock: toast info, don't reopen
+  //   • Otherwise → open UPDATE form (pre-filled with current review)
   const handleNotifClick = async (notif) => {
-    // Check if this is a review notification (has reference_id = book_id)
-    if (notif.reference_id && notif.title === '⭐ Rate your returned book') {
-      setNotifOpen(false);
-      setReviewModal({ open: true, bookId: notif.reference_id, notifId: notif.id });
+    await markOneRead(notif);
+
+    if (!notif.reference_id) return; // plain notification, nothing more to do
+
+    const isUpdateInvite = notif.title === TITLE_UPDATE_REVIEW;
+
+    let reviewData = null;
+    try {
+      const res = await reviewService.getMyReview(notif.reference_id);
+      reviewData = res.review || null;
+    } catch { /* ignore */ }
+
+    if (isUpdateInvite) {
+      // Lock if review was updated AFTER this notification was sent
+      if (reviewData && reviewData.updated_at) {
+        const reviewUpdatedAt  = new Date(reviewData.updated_at).getTime();
+        const notifCreatedAt   = new Date(notif.created_at).getTime();
+        if (reviewUpdatedAt > notifCreatedAt) {
+          toast.info("You have already updated your review for this book.");
+          return;
+        }
+      }
+      // Open update form (pre-filled)
+      setPanelOpen(false);
+      setReviewModal({ open: true, bookId: notif.reference_id, isUpdateMode: true });
+      return;
     }
 
-    if (!notif.is_read) {
-      try {
-        await notificationService.markRead(notif.id);
-        setNotifications(prev =>
-          prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
-        );
-        setUnreadNotif(prev => Math.max(0, prev - 1));
-      } catch {}
+    // First-time review invite
+    if (reviewData) {
+      // Already submitted — lock this notification
+      toast.info("You have already reviewed this book. Borrow it again to update your review.");
+      return;
     }
+
+    // No review yet → open new review form
+    setPanelOpen(false);
+    setReviewModal({ open: true, bookId: notif.reference_id, isUpdateMode: false });
   };
 
   const handleMarkAllRead = async () => {
     try {
       await notificationService.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setUnreadNotif(0);
+      setUnreadCount(0);
     } catch {
       toast.error("Failed to mark all as read");
     }
-  };
-
-  const handleMenuClick = ({ key }) => {
-    const item = MENU.find(m => m.key === key);
-    if (item) navigate(item.path);
   };
 
   const handleLogout = async () => {
@@ -267,91 +375,107 @@ export default function ReaderSidebar() {
     }
   };
 
-  // ── Notification panel portal ─────────────────────────
-  const notificationPanel = notifOpen && typeof document !== "undefined"
-    ? createPortal(
-        <div className="rs-notif-panel" ref={panelRef} style={panelStyle}>
-          <div className="rs-notif-header">
-            <span>Notifications</span>
-            {unreadNotif > 0 && (
-              <button className="rs-notif-mark-all" onClick={handleMarkAllRead}>
-                <CheckOutlined /> Mark all read
-              </button>
-            )}
-          </div>
+  // ─────────────────────────────────────────────────────
+  // Notification panel portal
+  // ─────────────────────────────────────────────────────
+  const notifPanel = panelOpen && createPortal(
+    <div className="rs-panel" ref={panelRef} style={panelPos}>
 
-          <div className="rs-notif-list">
-            {loadingNotif ? (
-              <div className="rs-notif-loading"><Spin /></div>
-            ) : notifications.length === 0 ? (
-              <div className="rs-notif-empty">
-                <BellOutlined />
-                <p>No notifications yet</p>
-              </div>
-            ) : (
-              notifications.map(n => (
-                <div
-                  key={n.id}
-                  className={`rs-notif-item ${!n.is_read ? "rs-notif-item--unread" : ""} ${n.reference_id && n.title === '⭐ Rate your returned book' ? "rs-notif-item--review" : ""}`}
-                  onClick={() => handleNotifClick(n)}
-                >
-                  {!n.is_read && <span className="rs-notif-dot" />}
-                  <div className="rs-notif-body">
-                    <div className="rs-notif-title">{n.title}</div>
-                    <div className="rs-notif-msg">{n.message}</div>
-                    {n.reference_id && n.title === '⭐ Rate your returned book' && (
-                      <div className="rs-notif-cta">Tap to rate →</div>
-                    )}
-                    <div className="rs-notif-time">{fmtTime(n.created_at)}</div>
-                  </div>
-                </div>
-              ))
-            )}
+      <div className="rs-panel-head">
+        <span className="rs-panel-title">Notifications</span>
+        {unreadCount > 0 && (
+          <button className="rs-panel-mark-all" onClick={handleMarkAllRead}>
+            <CheckOutlined /> Mark all read
+          </button>
+        )}
+      </div>
+
+      <div className="rs-panel-list">
+        {panelLoading ? (
+          <div className="rs-panel-spin"><Spin /></div>
+        ) : notifications.length === 0 ? (
+          <div className="rs-panel-empty">
+            <BellOutlined />
+            <p>No notifications yet</p>
           </div>
-        </div>,
-        document.body
-      )
-    : null;
+        ) : (
+          notifications.map(n => {
+            const isReview = !!n.reference_id;
+            return (
+              <div
+                key={n.id}
+                className={[
+                  "rs-notif-item",
+                  !n.is_read ? "rs-notif-item--unread" : "",
+                  isReview   ? "rs-notif-item--review"  : "",
+                ].filter(Boolean).join(" ")}
+                onClick={() => handleNotifClick(n)}
+              >
+                {!n.is_read && <span className="rs-notif-dot" />}
+                {isReview && <span className="rs-notif-star"><StarFilled /></span>}
+
+                <div className="rs-notif-body">
+                  <div className="rs-notif-title">{n.title}</div>
+                  <div className="rs-notif-msg">{n.message}</div>
+                  {isReview && <div className="rs-notif-cta">Tap to rate →</div>}
+                  <div className="rs-notif-time">{fmtTime(n.created_at)}</div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>,
+    document.body
+  );
 
   return (
     <>
       <Sider className="reader-sidebar" width={220} theme="light">
+
         <div className="rs-logo"><img src={logo} alt="Logo" /></div>
 
         <Menu
           mode="inline"
           selectedKeys={[activeKey]}
           className="rs-menu"
-          onClick={handleMenuClick}
+          onClick={({ key }) => {
+            const item = MENU.find(m => m.key === key);
+            if (item) navigate(item.path);
+          }}
           items={MENU.map(item => ({ key: item.key, icon: item.icon, label: item.label }))}
         />
 
-        {/* Notification button */}
         <div className="rs-notif-area">
           <button
             ref={triggerRef}
-            className={`rs-notif-trigger rs-notif-btn ${notifOpen ? "rs-notif-btn--active" : ""}`}
-            onClick={openNotifPanel}
+            className={`rs-notif-trigger ${panelOpen ? "rs-notif-trigger--active" : ""}`}
+            onClick={togglePanel}
           >
-            <Badge count={unreadNotif} size="small" offset={[4, -2]} overflowCount={99}>
+            <Badge count={unreadCount} size="small" offset={[4, -2]} overflowCount={99}>
               <BellOutlined className="rs-notif-icon" />
             </Badge>
             <span>Notifications</span>
-            {unreadNotif > 0 && (
-              <span className="rs-notif-count-pill">{unreadNotif > 99 ? "99+" : unreadNotif}</span>
+            {unreadCount > 0 && (
+              <span className="rs-badge-pill">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
             )}
           </button>
         </div>
 
         <div className="rs-footer">
-          <button className="rs-logout-btn" onClick={() => setShowConfirm(true)} disabled={logoutLoading}>
+          <button
+            className="rs-logout-btn"
+            onClick={() => setShowConfirm(true)}
+            disabled={logoutLoading}
+          >
             <LogoutOutlined className="rs-logout-icon" />
             <span>Logout</span>
           </button>
         </div>
       </Sider>
 
-      {/* Confirm logout modal */}
       <Modal
         open={showConfirm}
         onOk={handleLogout}
@@ -359,8 +483,7 @@ export default function ReaderSidebar() {
         okText="Logout"
         cancelText="Cancel"
         okButtonProps={{ danger: true, loading: logoutLoading }}
-        centered
-        width={400}
+        centered width={400}
         title={
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <LogoutOutlined style={{ color: "#ff4d4f" }} /> Confirm Logout
@@ -372,17 +495,14 @@ export default function ReaderSidebar() {
         </p>
       </Modal>
 
-      {notificationPanel}
+      {notifPanel}
 
-      {/* Review modal */}
       {reviewModal.open && reviewModal.bookId && (
-        <ReviewModal
+        <ReviewFormModal
           bookId={reviewModal.bookId}
-          onClose={() => setReviewModal({ open: false, bookId: null, notifId: null })}
-          onSuccess={() => {
-            // Refresh unread count after review
-            fetchUnreadCount();
-          }}
+          isUpdateMode={reviewModal.isUpdateMode}
+          onClose={() => setReviewModal({ open: false, bookId: null, isUpdateMode: false })}
+          onDone={fetchUnread}
         />
       )}
     </>
