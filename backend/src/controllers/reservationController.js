@@ -1,5 +1,23 @@
 import ReservationModel  from '../models/reservationModel.js';
 import NotificationModel from '../models/notificationModel.js';
+import getPool           from '../config/db.js';
+
+// ── Module-level helper ────────────────────────────────────────────────────
+async function promoteNextAndNotify(bookId) {
+  try {
+    const next = await ReservationModel.promoteNextPending(bookId);
+    if (!next) return;
+
+    await NotificationModel.create({
+      user_id: next.user_id,
+      type:    'general',
+      title:   'Your reserved book is now available!',
+      message: `Great news! "${next.book_title}" is now available for pickup. Please come to the library within 3 days before your reservation expires.`,
+    });
+  } catch (err) {
+    console.error('[reservationController] promoteNextAndNotify error:', err.message);
+  }
+}
 
 const reservationController = {
 
@@ -8,6 +26,33 @@ const reservationController = {
     try {
       const { book_id } = req.body;
       if (!book_id) return res.status(400).json({ message: 'book_id is required' });
+
+      // Block suspended users from reserving
+      const userRes = await getPool().query(
+        `SELECT status FROM users WHERE id = $1`,
+        [req.user.id]
+      );
+      const userStatus = userRes.rows[0]?.status;
+
+      if (userStatus === 'suspended') {
+        return res.status(403).json({
+          message: 'Your account is currently suspended due to overdue books. Please return all overdue books to restore your account and make reservations.',
+          status: 'suspended',
+        });
+      }
+
+      // Block users who have overdue books (even if account is still active)
+      const overdueRes = await getPool().query(
+        `SELECT COUNT(*) AS cnt FROM borrows
+         WHERE user_id = $1 AND status = 'overdue' AND return_date IS NULL`,
+        [req.user.id]
+      );
+      if (Number(overdueRes.rows[0].cnt) > 0) {
+        return res.status(403).json({
+          message: 'You have overdue books. Please return them before making a new reservation.',
+          status: 'overdue',
+        });
+      }
 
       const result = await ReservationModel.create(req.user.id, book_id);
 
@@ -32,25 +77,30 @@ const reservationController = {
   // DELETE /api/reservations/:id  (reader cancel their own)
   async cancel(req, res) {
     try {
-       console.log("User:", req.user.id);
-    console.log("Reservation ID:", req.params.id);
-      const reservation = await ReservationModel.cancel(req.user.id, req.params.id);
+      const reservationId = Number(req.params.id);
+      const userId        = Number(req.user.id);
 
-      // After reader cancels → promote the next waiting person automatically
-      await promoteNextAndNotify(reservation.book_id, reservation);
+      if (!reservationId || isNaN(reservationId)) {
+        return res.status(400).json({ message: 'Invalid reservation ID' });
+      }
 
-      return res.json({ message: 'Reservation cancelled', reservation });
+      const reservation = await ReservationModel.cancel(userId, reservationId);
+
+      promoteNextAndNotify(reservation.book_id).catch(e =>
+        console.error('[cancel] promote error:', e.message)
+      );
+
+      return res.json({ message: 'Reservation cancelled successfully', reservation });
     } catch (err) {
-      return res.status(400).json({ message: err.message || 'Failed to cancel' });
+      const msg = err.message || 'Failed to cancel reservation';
+      return res.status(400).json({ message: msg });
     }
   },
 
   // GET /api/reservations/my
-  // Auto-expires any overdue-ready reservations for this user before returning the list.
   async getMy(req, res) {
     try {
-      const userId = req.user.id;
-      const reservations = await ReservationModel.findByUser(userId);
+      const reservations = await ReservationModel.findByUser(req.user.id);
       return res.json({ reservations });
     } catch (err) {
       return res.status(500).json({ message: 'Internal server error' });
@@ -78,7 +128,6 @@ const reservationController = {
     try {
       const reservation = await ReservationModel.adminCancel(req.params.id);
 
-      // Notify the cancelled reader
       await NotificationModel.create({
         user_id: reservation.user_id,
         type:    'general',
@@ -86,42 +135,24 @@ const reservationController = {
         message: 'Your reservation has been cancelled by the library staff. Please contact us if you have questions.',
       }).catch(() => {});
 
-      // Promote the next person in queue automatically
-      await this.promoteNextAndNotify(reservation.book_id, reservation);
+      await promoteNextAndNotify(reservation.book_id);
 
       return res.json({ message: 'Reservation cancelled by admin', reservation });
     } catch (err) {
       return res.status(400).json({ message: err.message || 'Failed to cancel' });
     }
   },
-  
-  async promoteNextAndNotify(bookId, cancelledReservation) {
-  try {
-    const next = await ReservationModel.promoteNextPending(bookId);
-    if (!next) return; // nobody else is waiting
 
-    await NotificationModel.create({
-      user_id: next.user_id,
-      type:    'general',
-      title:   ' Your reserved book is now available!',
-      message: `Great news! "${next.book_title}" is now available for pickup. Please come to the library within 3 days before your reservation expires.`,
-    });
-  } catch (err) {
-    // Don't block the main response if this fails
-    console.error('[reservationController] promoteNextAndNotify error:', err.message);
-  }
-  
-},
-
+  // PATCH /api/reservations/:id/ready  (admin mark ready)
   async markReady(req, res) {
     try {
       const reservation = await ReservationModel.markReady(req.params.id);
 
       await NotificationModel.create({
         user_id: reservation.user_id,
-        type: 'general',
-        title: ' Book Ready',
-        message: 'Your reserved book is ready to pick up.',
+        type:    'general',
+        title:   'Book Ready for Pickup',
+        message: 'Your reserved book is ready to pick up. Please come within 3 days.',
       });
 
       return res.json({ message: 'Marked as ready', reservation });
@@ -130,10 +161,19 @@ const reservationController = {
     }
   },
 
-
+  // POST /api/reservations/:id/promote-next  (admin)
+  async promoteNext(req, res) {
+    try {
+      const reservation = await ReservationModel.findById(req.params.id);
+      if (!reservation) {
+        return res.status(404).json({ message: 'Reservation not found' });
+      }
+      await promoteNextAndNotify(reservation.book_id);
+      return res.json({ message: 'Next reader promoted successfully' });
+    } catch (err) {
+      return res.status(400).json({ message: err.message || 'Failed to promote' });
+    }
+  },
 };
-
-
-
 
 export default reservationController;

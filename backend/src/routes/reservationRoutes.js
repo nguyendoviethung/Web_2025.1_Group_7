@@ -15,7 +15,6 @@ router.get('/my',     authorize('reader'), reservationController.getMy);
 router.get('/',                    authorize('staff'), reservationController.getAll);
 router.patch('/:id/ready',         authorize('staff'), reservationController.markReady);
 router.patch('/:id/cancel',        authorize('staff'), reservationController.adminCancel);
-router.post('/:id/promote-next',   authorize('staff'), reservationController.promoteNextAndNotify);
-
+router.post('/:id/promote-next',   authorize('staff'), reservationController.promoteNext);
 
 export default router;

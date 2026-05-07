@@ -5,12 +5,12 @@ import LoginForm from "../components/LoginForm";
 import LoginBackground from "../components/LoginBackground";
 import { InputField } from "../components/InputField";
 import { login } from "../services/authService";
-import { useToast } from "../components/Toast";  
+import { useToast } from "../components/Toast";
 import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
 
 export default function SignIn() {
   const navigate    = useNavigate();
-  const toast       = useToast();               
+  const toast       = useToast();
   const passwordRef = useRef(null);
 
   const [formData, setFormData]         = useState({ email: "", password: "" });
@@ -22,22 +22,16 @@ export default function SignIn() {
   };
 
   const handleEmailKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      passwordRef.current?.focus();
-    }
+    if (e.key === "Enter") { e.preventDefault(); passwordRef.current?.focus(); }
   };
 
   const handlePasswordKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSignIn();
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleSignIn(); }
   };
 
   const handleSignIn = async () => {
     if (!formData.email || !formData.password) {
-      toast.warning("Please enter email and password");  
+      toast.warning("Please enter email and password");
       return;
     }
 
@@ -48,7 +42,15 @@ export default function SignIn() {
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("user", JSON.stringify(res.user));
 
-      toast.success("Login successful!");          
+      // Show suspended warning but still let them in
+      if (res.user.status === "suspended") {
+        toast.warning(
+          "Your account is suspended due to overdue books. You can browse but cannot borrow or reserve until you return them.",
+          5
+        );
+      } else {
+        toast.success("Login successful!");
+      }
 
       setTimeout(() => {
         if (res.user.role === "staff") {
@@ -56,11 +58,22 @@ export default function SignIn() {
         } else {
           navigate("/reader/home");
         }
-      }, 500);
+      }, 600);
 
     } catch (err) {
-     const errorMessage = err.response?.data?.message || "Incorrect email or password";
-     toast.error(errorMessage);
+      // err is the response data from axiosClient interceptor
+      const status     = err?.status;
+      const rawMessage = err?.message || "Incorrect email or password";
+
+      if (status === "banned") {
+        // Show a more prominent error for banned
+        toast.error(
+          "Your account has been permanently banned. Please contact the library for assistance.",
+          6
+        );
+      } else {
+        toast.error(rawMessage);
+      }
     } finally {
       setLoading(false);
     }

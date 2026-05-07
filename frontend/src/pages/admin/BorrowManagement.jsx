@@ -275,10 +275,19 @@ function BorrowModal({ onClose, onDone }) {
 
       setChecking(true);
       try {
-        const copy = await borrowService.checkBarcode(barcode);
+               const copy = await borrowService.checkBarcode(barcode);
         bookScannedSetRef.current.add(barcode);
         setScannedBooks(prev => [...prev, copy]);
-        toast.success(`Added: ${copy.book_title}`);
+ 
+        if (copy.has_reservation) {
+          toast.warning(
+            `⚠ "${copy.book_title}" has a pending reservation from ${copy.reservation_reader}. ` +
+            `Please verify with the reader before proceeding.`,
+            6
+          );
+        } else {
+          toast.success(`Added: ${copy.book_title}`);
+        }
       } catch (err) {
         toast.error(err.message || "Invalid barcode or book not available");
         pauseText(barcode, 4000);
@@ -526,11 +535,10 @@ function BorrowModal({ onClose, onDone }) {
                           alt={book.book_title}
                           onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }}
                         />
-                        <div className="bm-scanned-info">
-                          <div className="bm-scanned-title">{book.book_title}</div>
-                          <div className="bm-scanned-author">{book.book_author}</div>
+                        <div className="bm-scanned-info">                         <div className="bm-scanned-title">{book.book_title}</div>
+                         <div className="bm-scanned-author">{book.book_author}</div>
                           <code className="bm-code-sm">{book.barcode}</code>
-                        </div>
+                       </div>
                         <button className="bm-remove-btn" onClick={() => removeBook(book.barcode)}>
                           <DeleteOutlined />
                         </button>
@@ -571,45 +579,39 @@ function BorrowModal({ onClose, onDone }) {
 // Modal: RETURN
 // Quét từng barcode sách → hiện thông tin → submit tất cả
 
+// ReturnModal — replacement (no fine display)
+// Replace the entire ReturnModal function in BorrowManagement.jsx with this
+
 function ReturnModal({ onClose, onDone }) {
-const toast = useToast();
+  const toast = useToast();
   const [checking,     setChecking]     = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
   const [scannedItems, setScannedItems] = useState([]);
 
   const checkingRef     = useRef(false);
-  const scannedItemsRef = useRef([]); 
-  const pausedTextsRef = useRef(new Map());
+  const scannedItemsRef = useRef([]);
+  const pausedTextsRef  = useRef(new Map());
 
   useEffect(() => { checkingRef.current     = checking;     }, [checking]);
   useEffect(() => { scannedItemsRef.current = scannedItems; }, [scannedItems]);
 
-  // Kiểm tra barcode có đang bị pause không
   const isTextPaused = useCallback((text) => {
     const until = pausedTextsRef.current.get(text);
     if (!until) return false;
-    if (Date.now() > until) {
-      pausedTextsRef.current.delete(text);
-      return false;
-    }
+    if (Date.now() > until) { pausedTextsRef.current.delete(text); return false; }
     return true;
   }, []);
 
-  // Pause 1 barcode cụ thể trong ms milliseconds
   const pauseText = useCallback((text, ms = 4000) => {
     pausedTextsRef.current.set(text, Date.now() + ms);
   }, []);
 
   const handleQrScan = useCallback(async (text) => {
-    // Guard: đang có API request bay
     if (checkingRef.current) return;
 
     const barcode = text.toUpperCase();
-
-    // Barcode này đang bị pause (vừa lỗi) → bỏ qua silent
     if (isTextPaused(barcode)) return;
 
-    // Kiểm tra đã quét cuốn này chưa
     if (scannedItemsRef.current.find(i => i.barcode === barcode)) {
       toast.warning("Already in return list");
       pauseText(barcode, 3000);
@@ -620,12 +622,11 @@ const toast = useToast();
     try {
       const info = await borrowService.checkReturnBarcode(barcode);
 
-      // Kiểm tra người đọc khác nhau (nếu đã có sách trong list rồi thì không cho quét sách của người khác, tránh nhầm lẫn)
+      // Block mixing readers
       const existing = scannedItemsRef.current;
       if (existing.length > 0 && existing[0].user_id !== info.user_id) {
         toast.error(
-          `This book belongs to "${info.reader_name}" — ` +
-          `different from "${existing[0].reader_name}" in the current list. ` +
+          `This book belongs to "${info.reader_name}" — different from "${existing[0].reader_name}". ` +
           `You can only return books for one reader at a time.`
         );
         pauseText(barcode, 4000);
@@ -634,10 +635,8 @@ const toast = useToast();
 
       setScannedItems(prev => [...prev, info]);
 
-      if (info.fine_amount > 0) {
-        toast.warning(
-          `${info.book_title} — ${info.overdue_days} day(s) overdue · Fine: ${fmtMoney(info.fine_amount)}`
-        );
+      if (info.overdue_days > 0) {
+        toast.warning(`${info.book_title} — ${info.overdue_days} day(s) overdue`);
       } else {
         toast.success(`Added: ${info.book_title}`);
       }
@@ -650,26 +649,16 @@ const toast = useToast();
   }, [toast, isTextPaused, pauseText]);
 
   const removeItem = (barcode) => {
-    pausedTextsRef.current.delete(barcode); // Cho phép quét lại nếu xóa khỏi list
+    pausedTextsRef.current.delete(barcode);
     setScannedItems(prev => prev.filter(i => i.barcode !== barcode));
   };
-
-  const totalFine = scannedItems.reduce((s, i) => s + (i.fine_amount || 0), 0);
 
   const handleSubmit = async () => {
     if (!scannedItems.length) { toast.warning("No books scanned"); return; }
     try {
       setSubmitting(true);
       await borrowService.returnBatch(scannedItems.map(i => i.borrow_id));
-      toast.success(`${scannedItems.length} book(s) returned!`);
-
-      // Trigger notification refresh for all readers (by fetching unread count on each reader)
-      const readerIds = [...new Set(scannedItems.map(i => i.user_id))];
-      readerIds.forEach(readerId => {
-        // Broadcast event to trigger reader's notification refresh
-        window.dispatchEvent(new CustomEvent('bookReturned', { detail: { readerId } }));
-      });
-
+      toast.success(`${scannedItems.length} book(s) returned successfully!`);
       onDone();
       onClose();
     } catch (err) {
@@ -718,49 +707,37 @@ const toast = useToast();
                   <small>Scan the barcode on each book cover</small>
                 </div>
               ) : (
-                <>
-                  <div className="bm-scanned-list">
-                    {scannedItems.map((item, idx) => (
-                      <div
-                        key={item.barcode}
-                        className={`bm-scanned-item ${item.fine_amount > 0 ? "bm-scanned-item--overdue" : ""}`}
-                      >
-                        <span className="bm-scanned-num">{idx + 1}</span>
-                        <img
-                          src={item.book_cover || "https://placehold.co/32x44?text=N/A"}
-                          alt={item.book_title}
-                          onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }}
-                        />
-                        <div className="bm-scanned-info">
-                          <div className="bm-scanned-title">{item.book_title}</div>
-                          <div className="bm-scanned-meta">
-                            <span className="bm-meta-reader">{item.reader_name}</span>
-                            <span className="bm-meta-dot">·</span>
-                            <span className="bm-meta-date">Due {fmtDate(item.due_date)}</span>
-                          </div>
-                          {item.fine_amount > 0 && (
-                            <div className="bm-fine-tag">
-                              ⚠ {item.overdue_days}d · {fmtMoney(item.fine_amount)}
-                            </div>
-                          )}
+                <div className="bm-scanned-list">
+                  {scannedItems.map((item, idx) => (
+                    <div
+                      key={item.barcode}
+                      className={`bm-scanned-item ${item.overdue_days > 0 ? "bm-scanned-item--overdue" : ""}`}
+                    >
+                      <span className="bm-scanned-num">{idx + 1}</span>
+                      <img
+                        src={item.book_cover || "https://placehold.co/32x44?text=N/A"}
+                        alt={item.book_title}
+                        onError={e => { e.target.src = "https://placehold.co/32x44?text=N/A"; }}
+                      />
+                      <div className="bm-scanned-info">
+                        <div className="bm-scanned-title">{item.book_title}</div>
+                        <div className="bm-scanned-meta">
+                          <span className="bm-meta-reader">{item.reader_name}</span>
+                          <span className="bm-meta-dot">·</span>
+                          <span className="bm-meta-date">Due {fmtDate(item.due_date)}</span>
                         </div>
-                        <button className="bm-remove-btn" onClick={() => removeItem(item.barcode)}>
-                          <DeleteOutlined />
-                        </button>
+                        {item.overdue_days > 0 && (
+                          <div className="bm-fine-tag">
+                            ⚠ Overdue {item.overdue_days} day(s)
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-
-                  {totalFine > 0 && (
-                    <div className="bm-fine-summary">
-                      <WarningOutlined />
-                      <div>
-                        Collect fine: <strong>{fmtMoney(totalFine)}</strong>
-                        <small>Please collect before confirming</small>
-                      </div>
+                      <button className="bm-remove-btn" onClick={() => removeItem(item.barcode)}>
+                        <DeleteOutlined />
+                      </button>
                     </div>
-                  )}
-                </>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -773,14 +750,16 @@ const toast = useToast();
             onClick={handleSubmit}
             disabled={submitting || scannedItems.length === 0}
           >
-            {submitting ? <Spin size="small" /> : <><CheckCircleOutlined /> Confirm Return ({scannedItems.length})</>}
+            {submitting
+              ? <Spin size="small" />
+              : <><CheckCircleOutlined /> Confirm Return ({scannedItems.length})</>
+            }
           </button>
         </div>
       </div>
     </div>
   );
 }
-
 // Main Page
 
 const BorrowManagement = () => {

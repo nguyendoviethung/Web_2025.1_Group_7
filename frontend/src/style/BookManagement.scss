@@ -744,3 +744,17 @@
   margin: 0;
   line-height: 1.4;
 } 
+
+.bm-reservation-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  padding: 0.2rem 0.8rem;
+  background: #fff7e6;
+  color: #d46b08;
+  border: 0.1rem solid #ffd591;
+  border-radius: 2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
